@@ -1,0 +1,1633 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Pairing Lab</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Newsreader:ital,opsz,wght@0,6..72,400;0,6..72,500;1,6..72,400;1,6..72,500&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+/* Layout idea: a kitchen pass — an orbit stage where ingredients gather around a plate, with a side panel for the ingredient profile and the plate brief. */
+:root{
+  --bg:#F2F3EF; --surface:#FFFFFF; --ink:#18211D; --muted:#5E6862; --line:#D9DED7;
+  --accent:#2F6B3F; --accent-soft:rgba(47,107,63,.10); --plate:#FFFFFF;
+  --display:"Newsreader", Georgia, "Times New Roman", serif;
+  --body:"IBM Plex Sans", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --mono:"IBM Plex Mono", ui-monospace, Menlo, Consolas, monospace;
+  color-scheme:light;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --bg:#121614; --surface:#1A201D; --ink:#E7ECE8; --muted:#9AA59F; --line:#2C3531;
+    --accent:#7CC48F; --accent-soft:rgba(124,196,143,.14); --plate:#232A26; color-scheme:dark;
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#121614; --surface:#1A201D; --ink:#E7ECE8; --muted:#9AA59F; --line:#2C3531;
+  --accent:#7CC48F; --accent-soft:rgba(124,196,143,.14); --plate:#232A26; color-scheme:dark;
+}
+*{box-sizing:border-box}
+html,body{margin:0; height:100%}
+body{background:var(--bg); color:var(--ink); font:15px/1.5 var(--body); display:flex; flex-direction:column}
+button{font:inherit; color:inherit; cursor:pointer}
+button:focus-visible,input:focus-visible{outline:2px solid var(--accent); outline-offset:2px}
+@media (prefers-reduced-motion: reduce){*{transition:none!important; animation:none!important}}
+
+header{display:flex; align-items:center; justify-content:space-between; gap:16px; flex-wrap:wrap; padding:12px 20px; border-bottom:1px solid var(--line); background:var(--surface)}
+.brand{display:flex; align-items:baseline; gap:12px; flex-wrap:wrap}
+.brand h1{font:italic 500 26px/1 var(--display); margin:0}
+.brand span{font:11px var(--mono); color:var(--muted); text-transform:uppercase; letter-spacing:.08em}
+.modes{display:flex; border:1px solid var(--line); border-radius:999px; padding:3px; gap:2px}
+.modes button{border:0; background:none; padding:5px 16px; border-radius:999px; color:var(--muted); font-weight:500}
+.modes .on{background:var(--accent); color:var(--surface)}
+.modes button:disabled{cursor:default}
+.modes small{font:10px var(--mono); margin-left:4px}
+
+.app{flex:1; display:grid; grid-template-columns:minmax(0,1fr) 400px; min-height:0}
+.stagewrap{position:relative; display:flex; flex-direction:column; min-width:0; min-height:560px}
+.moods{display:flex; gap:8px; padding:12px 20px 0; align-items:center}
+.moods .lbl{font:500 11px var(--mono); text-transform:uppercase; letter-spacing:.08em; color:var(--muted); margin-right:4px}
+.chip{border:1px solid var(--line); background:var(--surface); border-radius:999px; padding:3px 11px; font-size:13px}
+.chip:hover{border-color:var(--accent)}
+.chip[aria-pressed="true"]{background:var(--ink); border-color:var(--ink); color:var(--surface)}
+.chiprow{display:flex; gap:6px; overflow-x:auto; flex:1; min-width:0; padding-bottom:2px; scrollbar-width:thin}
+.chiprow .chip{white-space:nowrap}
+.chiprow .sep{border-left:1px solid var(--line); margin:0 4px}
+.search{position:relative; flex:0 0 220px}
+.search input{width:100%; padding:6px 10px; border:1px solid var(--line); border-radius:999px; background:var(--surface); color:var(--ink); font:inherit; font-size:13px}
+.qres{position:absolute; right:0; top:36px; width:320px; max-width:90vw; background:var(--surface); border:1px solid var(--line); border-radius:10px; box-shadow:0 12px 30px rgba(0,0,0,.14); padding:6px; z-index:60}
+.qres[hidden]{display:none}
+.qrow{display:flex; align-items:center; gap:6px}
+.qopen{flex:1; display:flex; align-items:center; gap:8px; border:0; background:none; padding:5px 6px; border-radius:6px; text-align:left; font-size:14px}
+.qopen:hover{background:var(--bg)}
+.qopen small{margin-left:auto; color:var(--muted); font-size:11.5px}
+.qadd{border:1px solid var(--line); background:none; border-radius:6px; padding:3px 8px; font-size:12px; color:var(--accent); white-space:nowrap}
+.qnone{margin:6px; color:var(--muted); font-size:13px}
+.stagenote{position:absolute; left:20px; top:10px; font:11px var(--mono); color:var(--muted); text-transform:uppercase; letter-spacing:.06em; pointer-events:none}
+.tok.gone{pointer-events:none}
+.facts{display:flex; flex-wrap:wrap; gap:6px; margin:4px 0 10px}
+.linkish{border:0; background:none; padding:0; font-weight:600; color:var(--ink); text-decoration:underline; text-decoration-color:var(--line); text-underline-offset:3px}
+.linkish:hover{text-decoration-color:var(--accent)}
+.entry-or{margin:18px 0 8px!important; font:500 11px var(--mono)!important; text-transform:uppercase; letter-spacing:.1em}
+.entry-cats{display:flex; flex-wrap:wrap; gap:6px}
+#stage{position:relative; flex:1; overflow:hidden; touch-action:none}
+#rings{position:absolute; inset:0; width:100%; height:100%; pointer-events:none}
+#rings circle{fill:none; stroke:var(--line); stroke-width:1}
+#rings text{fill:var(--muted); font:10px var(--mono); letter-spacing:.08em; text-transform:uppercase}
+.plate{position:absolute; border-radius:50%; background:var(--plate); border:1px solid var(--line);
+  box-shadow:0 0 0 10px color-mix(in srgb, var(--plate) 55%, transparent), 0 12px 30px rgba(0,0,0,.10);
+  display:flex; align-items:center; justify-content:center; text-align:center; transition:box-shadow .2s, transform .2s}
+.plate.hot{box-shadow:0 0 0 10px var(--accent-soft), 0 0 0 12px var(--accent), 0 12px 30px rgba(0,0,0,.12)}
+.plate p{margin:0; font:italic 15px/1.3 var(--display); color:var(--muted); padding:0 18px; pointer-events:none}
+.tok{position:absolute; left:0; top:0; display:flex; flex-direction:column; align-items:center; gap:2px;
+  transition:transform .65s cubic-bezier(.2,.8,.2,1), opacity .4s; will-change:transform}
+.tok.drag{transition:none; z-index:20}
+.face{display:block; padding:0; border:0; background:none; border-radius:50%; touch-action:none; position:relative}
+.face svg{display:block; width:100%; height:100%; transition:transform .2s}
+.face:hover svg{transform:scale(1.07)}
+.face::after{content:""; position:absolute; inset:-3px; border-radius:50%; border:2px solid transparent}
+.tok[data-t="A"] .face::after{border-color:var(--accent); border-width:3px}
+.tok[data-t="C"] .face::after{border-color:var(--ink)}
+.tok[data-t="T"] .face::after{border:2px dashed var(--muted)}
+.tok.inspect .face::after{box-shadow:0 0 0 4px var(--accent-soft)}
+.tok .name{font-size:11.5px; font-weight:500; white-space:nowrap; background:color-mix(in srgb, var(--bg) 80%, transparent); padding:0 4px; border-radius:4px}
+.tok.dim .name{color:var(--muted)}
+.tok .rm{display:none; position:absolute; top:-4px; right:-4px; width:20px; height:20px; border-radius:50%; border:1px solid var(--line); background:var(--surface); font-size:13px; line-height:16px; padding:0; color:var(--muted)}
+.tok.onplate .rm{display:block}
+.tok.onplate .face::after{border-color:transparent}
+.caption{position:absolute; left:20px; right:20px; bottom:12px; font-size:13px; color:var(--muted); display:flex; gap:8px; align-items:baseline; flex-wrap:wrap; pointer-events:none; min-height:1.4em}
+.caption b{color:var(--ink)}
+.legend{position:absolute; right:20px; top:10px; display:flex; flex-direction:column; gap:6px; font-size:11.5px; color:var(--muted); background:color-mix(in srgb, var(--bg) 85%, transparent); padding:8px 10px; border-radius:8px}
+.legend span{display:flex; gap:8px; align-items:center}
+.sw{width:14px; height:14px; border-radius:50%; display:inline-block}
+.sw.A{border:3px solid var(--accent)} .sw.C{border:2px solid var(--ink)} .sw.T{border:2px dashed var(--muted)}
+.toast{position:absolute; left:50%; top:14px; transform:translateX(-50%); background:var(--ink); color:var(--surface); font-size:13px; padding:6px 12px; border-radius:6px; opacity:0; transition:opacity .25s; pointer-events:none}
+.toast.show{opacity:1}
+
+/* Entry overlay (D) */
+.entry{position:absolute; inset:0; z-index:40; display:flex; align-items:center; justify-content:center; padding:20px;
+  background:color-mix(in srgb, var(--bg) 82%, transparent); backdrop-filter:blur(3px)}
+.entry[hidden]{display:none}
+.entry-in{max-width:640px; width:100%}
+.entry h2{font:italic 500 40px/1.1 var(--display); margin:0 0 6px; text-wrap:balance}
+.entry p{color:var(--muted); margin:0 0 20px}
+.doors{display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:10px}
+.door{border:1px solid var(--line); background:var(--surface); border-radius:12px; padding:14px; text-align:left; display:flex; flex-direction:column; gap:8px; min-height:118px}
+.door:hover{border-color:var(--accent); transform:translateY(-2px)}
+.door{transition:transform .2s, border-color .2s}
+.door b{font:500 18px/1.15 var(--display)}
+.door small{color:var(--muted); font-size:12.5px}
+.door .mini{display:flex; gap:2px}
+.door .mini svg{width:28px; height:28px}
+.door.season{grid-column:span 2; background:var(--accent-soft); border-color:var(--accent)}
+
+/* Side panel */
+aside{border-left:1px solid var(--line); background:var(--surface); display:flex; flex-direction:column; min-height:0}
+.tabs{display:flex; border-bottom:1px solid var(--line)}
+.tabs button{flex:1; border:0; background:none; padding:12px; font-weight:500; color:var(--muted); border-bottom:2px solid transparent}
+.tabs button[aria-selected="true"]{color:var(--ink); border-bottom-color:var(--accent)}
+.tabs .count{font:11px var(--mono); margin-left:6px; background:var(--accent-soft); padding:1px 6px; border-radius:999px; color:var(--accent)}
+.panel{padding:18px 20px 28px; overflow:auto; flex:1}
+.panel[hidden]{display:none}
+.eyebrow{font:500 11px var(--mono); text-transform:uppercase; letter-spacing:.1em; color:var(--muted); margin:18px 0 8px}
+.photo{aspect-ratio:16/10; border-radius:10px; border:1px dashed var(--line); display:flex; align-items:center; justify-content:center; flex-direction:column; gap:6px; background:var(--bg); color:var(--muted); font-size:12px}
+.photo svg{width:96px; height:96px}
+.panel h2{font:italic 500 30px/1.1 var(--display); margin:14px 0 4px}
+.profile{margin:0; color:var(--ink)}
+.todo{color:var(--muted); font-style:italic; font-size:13.5px}
+.pills{display:flex; flex-wrap:wrap; gap:6px}
+.pill{font:12px var(--mono); border:1px solid var(--line); border-radius:4px; padding:2px 7px; background:var(--bg)}
+.pill i{font-style:normal; color:var(--muted)}
+dl{margin:0; display:grid; grid-template-columns:96px 1fr; gap:6px 12px; font-size:14px}
+dt{color:var(--muted); font-size:12.5px; padding-top:1px}
+dd{margin:0}
+.months{display:grid; grid-template-columns:repeat(12,1fr); gap:3px}
+.months span{font:10px var(--mono); text-align:center; padding:4px 0; border-radius:3px; background:var(--bg); color:var(--muted)}
+.months span.on{background:var(--accent); color:var(--surface)}
+.months span.now{outline:1px solid var(--ink)}
+.cta{width:100%; border:0; background:var(--accent); color:var(--surface); padding:10px; border-radius:6px; font-weight:600; margin-top:16px}
+.cta:disabled{opacity:.5; cursor:default}
+.ghost{width:100%; border:1px solid var(--line); background:none; padding:9px; border-radius:6px; font-weight:500; margin-top:8px}
+.matches{display:flex; flex-direction:column; gap:6px; font-size:13.5px}
+.matches div{display:flex; gap:8px; align-items:baseline; flex-wrap:wrap; color:var(--muted)}
+.matches b{color:var(--ink)}
+.tag{font:500 10px var(--mono); text-transform:uppercase; letter-spacing:.06em; padding:1px 5px; border-radius:3px; white-space:nowrap}
+.tag.A{background:var(--accent); color:var(--surface)} .tag.C{border:1px solid var(--ink)} .tag.T{border:1px dashed var(--muted); color:var(--muted)}
+.empty{padding:16px; border:1px dashed var(--line); border-radius:8px; color:var(--muted); font-size:14px}
+.seg{display:flex; border:1px solid var(--line); border-radius:6px; overflow:hidden; width:max-content}
+.seg button{border:0; background:none; padding:5px 14px; font-size:13px; color:var(--muted)}
+.seg button[aria-pressed="true"]{background:var(--ink); color:var(--surface)}
+.opts{display:flex; flex-wrap:wrap; gap:6px}
+.status{font-size:13px; color:var(--muted); margin:8px 0 0; min-height:1.2em}
+.card{margin-top:16px; border:1px solid var(--line); border-radius:10px; padding:16px; background:var(--bg)}
+.card .kind{display:flex; justify-content:space-between; font:500 10.5px var(--mono); text-transform:uppercase; letter-spacing:.08em; color:var(--muted); margin-bottom:8px}
+.card h3{font:italic 500 23px/1.15 var(--display); margin:0 0 6px; text-wrap:balance}
+.card .concept{margin:0 0 10px; color:var(--muted)}
+.card h4{font:500 11px var(--mono); text-transform:uppercase; letter-spacing:.08em; color:var(--muted); margin:12px 0 6px}
+.spec{width:100%; border-collapse:collapse; font-size:14px}
+.spec td{padding:4px 0; border-bottom:1px solid var(--line); vertical-align:top}
+.spec td:last-child{text-align:right; font:13px var(--mono); color:var(--muted); white-space:nowrap; padding-left:12px}
+.card ol{margin:0; padding-left:20px; font-size:14px}
+.why{margin:12px 0 0; padding:10px 12px; border-left:3px solid var(--accent); background:var(--accent-soft); font-size:14px}
+.meta{font-size:13px; color:var(--muted); margin-top:10px}
+.similar{display:flex; flex-direction:column; gap:8px}
+.sk{display:flex; gap:10px; align-items:center; padding:10px; border:1px dashed var(--line); border-radius:8px; color:var(--muted); font-size:13px}
+.sk .ph{width:44px; height:44px; border-radius:6px; background:var(--bg); flex:none}
+.note{font-size:12.5px; color:var(--muted); margin-top:20px; border-top:1px solid var(--line); padding-top:12px}
+
+/* Section switch */
+.views{display:flex; gap:4px; border:1px solid var(--line); border-radius:8px; padding:3px}
+.views a{padding:5px 14px; border-radius:6px; text-decoration:none; color:var(--muted); font-weight:500; font-size:14px}
+.views a small{font:10px var(--mono); margin-left:4px; opacity:.8}
+.views a[aria-current="page"]{background:var(--ink); color:var(--surface)}
+body.view-market .app, body.view-market .modes{display:none}
+#market{display:none; flex:1; position:relative; min-height:560px; overflow:hidden; background:#F1DCC0}
+body.view-market #market{display:block}
+#mkCanvas{position:absolute; inset:0; width:100%; height:100%; display:block; touch-action:none}
+.mk-title{position:absolute; left:20px; top:16px; color:#2A1A12; pointer-events:none}
+.mk-title b{display:block; font:italic 500 28px/1 var(--display)}
+.mk-title span{font:11px var(--mono); text-transform:uppercase; letter-spacing:.1em; opacity:.75}
+.mk-intro{position:absolute; left:20px; bottom:190px; max-width:380px; background:rgba(255,250,242,.94); color:#2A1A12; border-radius:12px; padding:18px 20px; box-shadow:0 10px 30px rgba(60,30,10,.18)}
+.mk-intro h2{font:italic 500 26px/1.1 var(--display); margin:0 0 6px}
+.mk-intro p{margin:0 0 12px; font-size:14px; color:#5A4436}
+.mkbtn{border:0; background:#C2255C; color:#fff; padding:9px 16px; border-radius:6px; font-weight:600}
+.mkbtn.ghost{background:none; color:#C2255C; border:1px solid #C2255C; margin:0}
+.mk-rail{position:absolute; left:50%; bottom:18px; transform:translateX(-50%); display:flex; align-items:center; gap:6px; background:rgba(255,250,242,.94); border-radius:999px; padding:6px; box-shadow:0 6px 20px rgba(60,30,10,.15); max-width:calc(100% - 32px); overflow-x:auto}
+.mk-rail button{border:0; background:none; color:#5A4436; padding:6px 12px; border-radius:999px; font-size:13px; white-space:nowrap}
+.mk-rail button[aria-current="true"]{background:#2A1A12; color:#fff}
+.mk-rail .arrow{font-size:16px; padding:6px 10px}
+.mk-panel{position:absolute; right:16px; top:16px; bottom:16px; width:380px; max-width:calc(100% - 32px); background:rgba(255,250,242,.97); color:#2A1A12; border-radius:14px; box-shadow:0 12px 36px rgba(60,30,10,.22); display:flex; flex-direction:column; overflow:hidden}
+.mk-panel[hidden]{display:none}
+.mk-head{padding:16px 18px 12px; border-bottom:1px solid #EAD9C4}
+.mk-head .who{display:flex; gap:10px; align-items:center}
+.mk-head .av{width:36px; height:36px; border-radius:50%; flex:none; border:2px solid #fff; box-shadow:0 0 0 1px #EAD9C4}
+.mk-head b{font:italic 500 22px/1.1 var(--display); display:block}
+.mk-head small{font:11px var(--mono); text-transform:uppercase; letter-spacing:.08em; color:#8A6E5C}
+.mk-head p{margin:8px 0 0; font-size:13px; color:#5A4436}
+.mk-items{display:flex; flex-wrap:wrap; gap:6px; padding:10px 18px; border-bottom:1px solid #EAD9C4}
+.mk-items button{border:1px solid #E2CDB4; background:#fff; border-radius:999px; padding:3px 10px; font-size:12.5px; color:#2A1A12}
+.mk-items button[aria-pressed="true"]{background:#2A1A12; border-color:#2A1A12; color:#fff}
+.mk-chat{flex:1; overflow:auto; padding:14px 18px; display:flex; flex-direction:column; gap:10px}
+.bub{max-width:88%; padding:9px 12px; border-radius:12px; font-size:14px; line-height:1.45; white-space:pre-wrap}
+.bub.v{background:#fff; border:1px solid #EAD9C4; border-bottom-left-radius:4px; align-self:flex-start}
+.bub.v i{display:block; font:500 10.5px var(--mono); font-style:normal; text-transform:uppercase; letter-spacing:.08em; color:#8A6E5C; margin-bottom:2px}
+.bub.u{background:#2A1A12; color:#fff; border-bottom-right-radius:4px; align-self:flex-end}
+.bub.n{align-self:center; background:none; color:#8A6E5C; font-size:12px; padding:0}
+.mk-quick{display:flex; flex-wrap:wrap; gap:6px; padding:0 18px 8px}
+.mk-quick button{border:1px dashed #C9AE92; background:none; border-radius:999px; padding:3px 10px; font-size:12.5px; color:#5A4436}
+.mk-form{display:flex; gap:6px; padding:10px 18px 14px; border-top:1px solid #EAD9C4}
+.mk-form input{flex:1; border:1px solid #E2CDB4; border-radius:6px; padding:8px 10px; font:inherit; font-size:14px; background:#fff; color:#2A1A12}
+.mk-foot{display:flex; justify-content:space-between; gap:8px; align-items:center; padding:0 18px 12px; font-size:11.5px; color:#8A6E5C}
+.mk-foot button{border:0; background:none; color:#C2255C; font-weight:600; font-size:12.5px; padding:0}
+.mk-hint{position:absolute; left:50%; top:16px; transform:translateX(-50%); background:rgba(42,26,18,.85); color:#fff; font-size:13px; padding:6px 12px; border-radius:6px; pointer-events:none; opacity:0; transition:opacity .3s}
+.mk-hint.show{opacity:1}
+.mk-x{border:0; background:none; font-size:22px; color:#8A6E5C; padding:0 4px; line-height:1}
+.mk-pad{position:absolute; left:20px; bottom:20px; width:150px; height:150px; display:grid; grid-template-columns:repeat(3,1fr); grid-template-rows:repeat(3,1fr); gap:4px; touch-action:none; user-select:none; -webkit-user-select:none}
+.mk-pad button{border:0; border-radius:12px; background:rgba(255,250,242,.92); color:#2A1A12; font-size:18px; box-shadow:0 4px 14px rgba(60,30,10,.18); touch-action:none}
+.mk-pad button.on{background:#2A1A12; color:#fff}
+.mk-pad .up{grid-column:2; grid-row:1} .mk-pad .left{grid-column:1; grid-row:2} .mk-pad .right{grid-column:3; grid-row:2} .mk-pad .down{grid-column:2; grid-row:3}
+.mk-map{position:absolute; left:20px; top:70px; width:190px; height:76px; background:rgba(255,250,242,.9); border-radius:10px; box-shadow:0 4px 14px rgba(60,30,10,.15)}
+.mk-prompt{position:absolute; left:50%; bottom:28px; transform:translateX(-50%); display:flex; align-items:center; gap:12px; background:rgba(255,250,242,.96); color:#2A1A12; border-radius:999px; padding:8px 8px 8px 18px; box-shadow:0 8px 24px rgba(60,30,10,.22); font-size:14px; white-space:nowrap}
+.mk-prompt[hidden]{display:none}
+.mk-prompt b{font:italic 500 18px var(--display)}
+.mk-prompt .mkbtn{border-radius:999px}
+.mk-prompt kbd{font:10px var(--mono); border:1px solid rgba(255,255,255,.6); border-radius:3px; padding:0 4px; margin-left:4px}
+@media (min-width:761px){ .mk-panel:not([hidden]) ~ .mk-prompt{left:calc(50% - 200px)} }
+@media (max-width:760px){
+  .mk-panel{top:auto; height:50%; right:8px; left:8px; width:auto; bottom:170px}
+  .mk-intro{right:16px; max-width:none; bottom:184px}
+  .mk-pad{width:126px; height:126px; left:12px; bottom:12px}
+  .mk-prompt{left:auto; right:12px; transform:none; bottom:20px}
+  .mk-map{display:none}
+  .views a small{display:none}
+}
+
+@media (max-width:960px){
+  .app{grid-template-columns:1fr}
+  aside{border-left:0; border-top:1px solid var(--line)}
+  .stagewrap{min-height:620px}
+  .legend{display:none}
+}
+@media (max-width:560px){
+  .doors{grid-template-columns:1fr 1fr}
+  .entry h2{font-size:30px}
+}
+</style>
+</head>
+<body>
+<header>
+  <div class="brand"><h1>Pairing Lab</h1><span id="brandSub">Kitchen · v2 · 500 ingredients</span></div>
+  <nav class="views" aria-label="Section">
+    <a href="#lab" id="v-lab">Pairing Lab <small>for chefs</small></a>
+    <a href="#market" id="v-market">Mercado 3D <small>for everyone</small></a>
+  </nav>
+  <nav class="modes" aria-label="Mode">
+    <button type="button" class="on" aria-current="page">Kitchen</button>
+    <button type="button" disabled title="Bar mode will be built from Kitchen later">Bar<small>soon</small></button>
+  </nav>
+</header>
+
+<div class="app">
+  <div class="stagewrap">
+    <div class="moods"><span class="lbl">Start from</span><div class="chiprow" id="moodChips"></div>
+      <div class="search"><input id="q" type="search" placeholder="Search 500 ingredients" aria-label="Search ingredients" autocomplete="off"><div class="qres" id="qres" hidden></div></div></div>
+    <div id="stage" aria-label="Ingredient stage">
+      <svg id="rings" aria-hidden="true"></svg>
+      <div class="plate" id="plate"><p id="plateHint">Drag ingredients here</p></div>
+      <div class="legend" aria-hidden="true">
+        <span><i class="sw A"></i>Shared aroma</span>
+        <span><i class="sw C"></i>Contrast</span>
+        <span><i class="sw T"></i>Classic</span>
+        <span style="color:var(--muted)">Closer = stronger</span>
+      </div>
+      <div class="stagenote" id="stageNote"></div>
+      <div class="caption" id="caption"></div>
+      <div class="toast" id="toast" role="status"></div>
+    </div>
+    <div class="entry" id="entry">
+      <div class="entry-in">
+        <h2>What are you cooking toward?</h2>
+        <p>Pick a starting point among <span id="ingCount">500</span> ingredients. Drag one onto the plate, or tap it to read its profile.</p>
+        <div class="doors" id="doors"></div>
+        <p class="entry-or">Or browse by category</p>
+        <div class="entry-cats" id="entryCats"></div>
+      </div>
+    </div>
+  </div>
+
+  <aside>
+    <div class="tabs" role="tablist">
+      <button type="button" role="tab" id="tab-ing" aria-selected="true" aria-controls="p-ing">Ingredient</button>
+      <button type="button" role="tab" id="tab-plate" aria-selected="false" aria-controls="p-plate">Plate<span class="count" id="plateCount">0</span></button>
+    </div>
+    <div class="panel" id="p-ing" role="tabpanel" aria-labelledby="tab-ing"></div>
+    <div class="panel" id="p-plate" role="tabpanel" aria-labelledby="tab-plate" hidden></div>
+  </aside>
+</div>
+
+<div id="market" aria-label="Mercado 3D">
+  <canvas id="mkCanvas"></canvas>
+  <div class="mk-title"><b>Mercado</b><span>Mexico · 3D prototype</span></div>
+  <div class="mk-hint" id="mkHint"></div>
+  <div class="mk-intro" id="mkIntro">
+    <h2>Walk the mercado</h2>
+    <p>Wander the aisle with the arrow pad, the arrow keys or WASD. Drag the view to look around. Walk up to a stall and a vendor will offer to chat. Vendors are characters voiced by AI.</p>
+    <button type="button" class="mkbtn" id="mkStart">Start walking</button>
+  </div>
+  <aside class="mk-panel" id="mkPanel" hidden>
+    <div class="mk-head">
+      <div class="who"><span class="av" id="mkAv"></span><div style="flex:1"><b id="mkName"></b><small id="mkStall"></small></div><button type="button" class="mk-x" id="mkClose" aria-label="End conversation">×</button></div>
+      <p id="mkDesc"></p>
+    </div>
+    <div class="mk-items" id="mkItems"></div>
+    <div class="mk-chat" id="mkChat" aria-live="polite"></div>
+    <div class="mk-quick" id="mkQuick"></div>
+    <form class="mk-form" id="mkForm"><input id="mkInput" type="text" placeholder="Ask the vendor anything about cooking" aria-label="Message the vendor" autocomplete="off"><button type="submit" class="mkbtn">Ask</button></form>
+    <div class="mk-foot"><span>AI character · advice may be imperfect</span><button type="button" id="mkLab" hidden></button></div>
+  </aside>
+  <svg class="mk-map" id="mkMap" viewBox="0 0 175 70" aria-label="Market map"></svg>
+  <div class="mk-prompt" id="mkPrompt" hidden><span id="mkPromptText"></span><button type="button" class="mkbtn" id="mkTalk">Talk <kbd>E</kbd></button></div>
+  <div class="mk-pad" id="mkPad" aria-label="Walk controls">
+    <button type="button" data-k="up" class="up" aria-label="Walk forward">▲</button>
+    <button type="button" data-k="left" class="left" aria-label="Turn left">◀</button>
+    <button type="button" data-k="right" class="right" aria-label="Turn right">▶</button>
+    <button type="button" data-k="down" class="down" aria-label="Walk back">▼</button>
+  </div>
+</div>
+
+<script>
+/* AI bridge for the deployed site: the browser asks our own /api/ai function,
+   which holds the secret API key on the server and calls Claude. */
+window.AI = (function(){
+  async function call(input, wantJson){
+    const messages = typeof input === "string" ? [{role:"user", content:input}] : input;
+    const r = await fetch("/api/ai", {method:"POST", headers:{"content-type":"application/json"}, body:JSON.stringify({messages, json:!!wantJson})});
+    if (r.status === 429) throw {code:"rate_limited"};
+    if (!r.ok) throw {code:"error"};
+    return (await r.json()).text || "";
+  }
+  const ask = async (input, opts={}) => { const text = await call(input, false); if (opts.onText) opts.onText({text}); return {text, truncated:false}; };
+  ask.json = async (input) => { const text = await call(input, true); const m = text.match(/\{[\s\S]*\}/); return JSON.parse(m ? m[0] : text); };
+  return ask;
+})();
+</script>
+<script>
+/* ---------- Illustrations: one drawing system for every ingredient ---------- */
+const S = '#2B2622';
+const G = {
+ strawberry:['#FBE3E4',`<path d="M50 84C30 72 20 54 25 41C29 31 41 31 50 37C59 31 71 31 75 41C80 54 70 72 50 84Z" fill="#D7263D"/><g fill="#F7E28B"><ellipse cx="40" cy="50" rx="1.6" ry="2.6"/><ellipse cx="52" cy="47" rx="1.6" ry="2.6"/><ellipse cx="62" cy="54" rx="1.6" ry="2.6"/><ellipse cx="45" cy="62" rx="1.6" ry="2.6"/><ellipse cx="56" cy="66" rx="1.6" ry="2.6"/><ellipse cx="36" cy="56" rx="1.6" ry="2.6"/></g><path d="M34 36L44 33L50 22L56 33L66 36L56 40L50 34L44 40Z" fill="#3E8E41"/>`],
+ tomato:['#FCE4DE',`<circle cx="50" cy="56" r="27" fill="#E0402F"/><ellipse cx="40" cy="46" rx="6" ry="4" fill="#fff" opacity=".35"/><path d="M50 31L54 38L62 35L57 41L64 45L55 44L50 50L45 44L36 45L43 41L38 35L46 38Z" fill="#3E8E41"/>`],
+ orange:['#FDEBD8',`<circle cx="50" cy="55" r="27" fill="#F28C28"/><circle cx="50" cy="55" r="27" fill="none" stroke="#D9731A" stroke-dasharray="1 4" stroke-width="2" opacity=".6"/><path d="M50 29C56 20 66 20 70 24C64 30 56 31 50 29Z" fill="#3E8E41"/>`],
+ lemon:['#FBF4D2',`<path d="M18 52C24 36 40 30 52 30C66 30 78 38 82 50C78 64 64 72 50 72C36 72 22 64 18 52Z" fill="#F2CF3A"/><circle cx="17" cy="52" r="3" fill="#E2B92A"/><circle cx="83" cy="50" r="3" fill="#E2B92A"/><ellipse cx="40" cy="44" rx="8" ry="3" fill="#fff" opacity=".4"/>`],
+ lime:['#E9F3DA',`<circle cx="50" cy="52" r="27" fill="#6FA83C"/><circle cx="50" cy="52" r="22" fill="#C9E39A"/><g stroke="#8DBA55" stroke-width="2"><line x1="50" y1="30" x2="50" y2="74"/><line x1="28" y1="52" x2="72" y2="52"/><line x1="34" y1="36" x2="66" y2="68"/><line x1="66" y1="36" x2="34" y2="68"/></g><circle cx="50" cy="52" r="3" fill="#EEF6DA"/>`],
+ apple:['#FBE1DF',`<path d="M50 38C40 30 24 33 23 50C22 66 34 80 44 80C47 80 48 78 50 78C52 78 53 80 56 80C66 80 78 66 77 50C76 33 60 30 50 38Z" fill="#C8312E"/><path d="M50 38L52 24" stroke="#6B4423" stroke-width="3" stroke-linecap="round"/><path d="M53 30C58 22 68 22 70 26C64 31 58 32 53 30Z" fill="#3E8E41"/>`],
+ pear:['#F4F3D6',`<path d="M50 28C42 28 41 40 38 48C30 54 26 62 28 70C31 80 42 84 50 84C58 84 69 80 72 70C74 62 70 54 62 48C59 40 58 28 50 28Z" fill="#BFB63E"/><path d="M50 28L49 18" stroke="#6B4423" stroke-width="3" stroke-linecap="round"/><ellipse cx="42" cy="64" rx="5" ry="8" fill="#fff" opacity=".25"/>`],
+ pineapple:['#FBEFD6',`<path d="M50 30L42 12L50 20L52 8L56 21L64 12L58 30Z" fill="#3E8E41"/><ellipse cx="50" cy="60" rx="21" ry="27" fill="#E2A93B"/><g stroke="#B7801E" stroke-width="1.6"><path d="M32 46L62 84M30 60L52 88M40 36L70 74M54 34L70 54M68 46L38 84M70 60L48 88M60 36L30 74M46 34L30 54"/></g>`],
+ coconut:['#EFE6DC',`<circle cx="50" cy="52" r="28" fill="#7A5034"/><circle cx="50" cy="52" r="21" fill="#FAF6EE"/><circle cx="50" cy="52" r="21" fill="none" stroke="#E7DCC9" stroke-width="2"/>`],
+ fig:['#F0E2EC',`<path d="M50 20C54 30 72 44 72 62C72 76 62 84 50 84C38 84 28 76 28 62C28 44 46 30 50 20Z" fill="#6B3A5B"/><path d="M50 20L50 14" stroke="#4E7A3A" stroke-width="3" stroke-linecap="round"/><ellipse cx="41" cy="60" rx="4" ry="9" fill="#fff" opacity=".18"/>`],
+ rhubarb:['#FBE2E7',`<path d="M40 86L44 34" stroke="#D0465F" stroke-width="9" stroke-linecap="round"/><path d="M56 86L58 38" stroke="#E0687F" stroke-width="8" stroke-linecap="round"/><path d="M30 34C30 18 50 12 58 18C70 14 76 30 66 36C56 42 36 44 30 34Z" fill="#4E9A47"/>`],
+ basil:['#E2F0DE',`<path d="M50 84C30 72 24 46 34 30C42 18 58 18 66 30C76 46 70 72 50 84Z" fill="#3F9142"/><path d="M50 84L50 30" stroke="#2F7233" stroke-width="2"/><path d="M50 50L40 42M50 62L38 54M50 50L60 42M50 62L62 54" stroke="#2F7233" stroke-width="1.5"/>`],
+ mint:['#E3F4E2',`<path d="M48 82C30 76 22 56 30 42C36 32 46 34 48 46Z" fill="#5CB85C"/><path d="M52 82C70 76 78 56 70 42C64 32 54 34 52 46Z" fill="#4FA24F"/><path d="M50 20C40 24 38 36 50 46C62 36 60 24 50 20Z" fill="#6CC46C"/><path d="M50 86L50 24" stroke="#2F7233" stroke-width="2"/>`],
+ cilantro:['#E3F0DD',`<g fill="#4E9A47"><circle cx="38" cy="38" r="10"/><circle cx="60" cy="34" r="10"/><circle cx="64" cy="56" r="9"/><circle cx="36" cy="58" r="9"/><circle cx="50" cy="48" r="9"/></g><g fill="#3A7D35"><circle cx="34" cy="34" r="4"/><circle cx="64" cy="30" r="4"/><circle cx="68" cy="58" r="3.5"/></g><path d="M50 88L50 52M50 70L38 60M50 66L62 58" stroke="#3A7D35" stroke-width="2"/>`],
+ rosemary:['#E2EDE5',`<path d="M50 88L50 14" stroke="#5B4632" stroke-width="2.5"/><g fill="#4E7A5A">${[18,26,34,42,50,58,66,74].map(y=>`<ellipse cx="42" cy="${y}" rx="8" ry="2.2" transform="rotate(-30 42 ${y})"/><ellipse cx="58" cy="${y+4}" rx="8" ry="2.2" transform="rotate(30 58 ${y+4})"/>`).join("")}</g>`],
+ ginger:['#F6ECDD',`<path d="M22 58C20 48 30 44 36 48C38 38 50 36 54 44C58 34 72 34 74 44C82 44 84 56 76 60C80 70 66 76 60 70C54 78 40 76 38 68C30 72 22 66 22 58Z" fill="#D9B27C"/><path d="M36 52C40 56 46 54 50 58M58 50C62 54 68 54 70 58" stroke="#B88E57" stroke-width="2" fill="none"/>`],
+ "black pepper":['#ECEBE7',`<g fill="#2F2F2F">${[[40,40],[54,36],[64,48],[46,54],[58,62],[36,62],[50,70],[66,68]].map(([x,y])=>`<circle cx="${x}" cy="${y}" r="7"/>`).join("")}</g><g fill="#fff" opacity=".25">${[[38,38],[52,34],[62,46],[44,52]].map(([x,y])=>`<circle cx="${x}" cy="${y}" r="2"/>`).join("")}</g>`],
+ chili:['#FBE0DC',`<path d="M64 28C70 40 66 62 52 74C42 82 28 84 24 80C36 76 46 64 50 52C54 40 54 30 64 28Z" fill="#C0392B"/><path d="M58 28C62 22 70 22 72 28C70 32 62 34 58 28Z" fill="#3E8E41"/><path d="M66 24C68 18 72 14 76 14" stroke="#3E8E41" stroke-width="3" fill="none" stroke-linecap="round"/>`],
+ cinnamon:['#F3E5D8',`<rect x="22" y="34" width="56" height="12" rx="6" fill="#9C5B2E" transform="rotate(-18 50 40)"/><rect x="24" y="54" width="56" height="12" rx="6" fill="#B06A36" transform="rotate(-18 52 60)"/><circle cx="25" cy="49" r="6" fill="#7A4523"/><circle cx="27" cy="69" r="6" fill="#8A4F28"/>`],
+ cardamom:['#E9F1DD',`<ellipse cx="38" cy="54" rx="11" ry="20" fill="#8DB65A" transform="rotate(-20 38 54)"/><ellipse cx="62" cy="52" rx="11" ry="20" fill="#9FC56A" transform="rotate(18 62 52)"/><path d="M34 36L42 72M66 34L58 70" stroke="#6E9440" stroke-width="1.6"/>`],
+ vanilla:['#EFE8E0',`<path d="M26 82C40 60 52 38 66 16" stroke="#3B2A20" stroke-width="6" stroke-linecap="round" fill="none"/><path d="M38 84C50 62 62 42 76 22" stroke="#4A3528" stroke-width="5" stroke-linecap="round" fill="none"/><g fill="#F3EBD2"><circle cx="66" cy="44" r="7"/><circle cx="74" cy="50" r="6"/><circle cx="64" cy="54" r="6"/></g><circle cx="68" cy="50" r="3" fill="#E9C46A"/>`],
+ cucumber:['#E2EFDF',`<rect x="16" y="40" width="68" height="22" rx="11" fill="#3D7A3A" transform="rotate(-20 50 51)"/><g fill="#9BCB8A">${[[30,58],[42,52],[54,48],[66,42],[36,48],[60,54]].map(([x,y])=>`<circle cx="${x}" cy="${y}" r="1.6"/>`).join("")}</g>`],
+ beet:['#F4E0E8',`<path d="M42 30C36 16 40 10 46 12C48 20 48 26 46 32M56 32C58 18 66 12 70 16C66 24 62 30 58 34" fill="#4E9A47"/><path d="M42 30L46 12M56 32L68 16" stroke="#C04070" stroke-width="2"/><circle cx="50" cy="56" r="24" fill="#7B1E45"/><path d="M50 80L52 90" stroke="#7B1E45" stroke-width="3" stroke-linecap="round"/><ellipse cx="42" cy="48" rx="6" ry="4" fill="#fff" opacity=".2"/>`],
+ mushroom:['#F1E8DF',`<path d="M18 52C18 30 34 20 50 20C66 20 82 30 82 52Z" fill="#B07A4E"/><path d="M40 52L38 80C38 84 62 84 62 80L60 52Z" fill="#EADBC8"/><g fill="#D7B48F"><circle cx="38" cy="36" r="3"/><circle cx="56" cy="30" r="2.5"/><circle cx="66" cy="42" r="3"/></g>`],
+ parmesan:['#FBF2D8',`<path d="M18 70L76 30L82 70Z" fill="#F2D27A"/><path d="M76 30L82 70L86 68L80 28Z" fill="#C9A24A"/><g fill="#E3BD5A"><circle cx="58" cy="56" r="2"/><circle cx="70" cy="62" r="1.6"/><circle cx="46" cy="64" r="1.6"/></g>`],
+ "blue cheese":['#ECEFF4',`<path d="M18 70L76 30L82 70Z" fill="#F3EEE0"/><path d="M76 30L82 70L86 68L80 28Z" fill="#D9D1BC"/><path d="M40 62C46 58 50 64 56 58M58 50C62 46 66 52 70 46M54 66C60 62 64 68 72 62" stroke="#4F6D9A" stroke-width="2.2" fill="none" stroke-linecap="round"/>`],
+ "goat cheese":['#F2F0EA',`<rect x="18" y="38" width="64" height="28" rx="14" fill="#F7F4EC" stroke="#DDD6C6" stroke-width="2"/><ellipse cx="72" cy="52" rx="8" ry="13" fill="#EDE7D8"/><g fill="#E2DAC8"><circle cx="34" cy="48" r="1.6"/><circle cx="46" cy="56" r="1.6"/><circle cx="56" cy="46" r="1.6"/></g>`],
+ miso:['#F3EADB',`<path d="M30 46C30 34 70 34 70 46Z" fill="#C79A4E"/><path d="M20 46H80C80 66 66 78 50 78C34 78 20 66 20 46Z" fill="#4A6A82"/><path d="M20 46H80" stroke="#3A566B" stroke-width="3"/>`],
+ sesame:['#F6F0E1',`<g fill="#EADBB0" stroke="#CDB880" stroke-width="1">${[[36,36,-20],[56,30,15],[66,50,40],[44,52,-10],[30,62,25],[56,66,-30],[48,78,10],[70,72,60]].map(([x,y,r])=>`<path d="M${x} ${y-8}C${x+5} ${y-3} ${x+5} ${y+5} ${x} ${y+8}C${x-5} ${y+5} ${x-5} ${y-3} ${x} ${y-8}Z" transform="rotate(${r} ${x} ${y})"/>`).join("")}</g>`],
+ walnut:['#F1E6DA',`<ellipse cx="50" cy="52" rx="28" ry="24" fill="#A9774B"/><path d="M50 28V76M32 40C40 44 38 52 30 56M68 40C60 44 62 52 70 56M38 66C44 62 48 66 50 62M62 66C56 62 52 66 50 62" stroke="#7E532F" stroke-width="2.2" fill="none" stroke-linecap="round"/>`],
+ "dark chocolate":['#ECE3DE',`<rect x="22" y="22" width="56" height="58" rx="4" fill="#4A2C1F" transform="rotate(-8 50 51)"/><g transform="rotate(-8 50 51)" fill="#5E3A29">${[0,1].map(c=>[0,1,2].map(r=>`<rect x="${26+c*26}" y="${26+r*18}" width="22" height="14" rx="2"/>`).join("")).join("")}</g>`],
+ coffee:['#EEE4DC',`<ellipse cx="40" cy="50" rx="15" ry="22" fill="#5A3825" transform="rotate(-25 40 50)"/><path d="M34 32C44 42 36 58 46 68" stroke="#3A2215" stroke-width="2.5" fill="none" transform="rotate(-25 40 50)"/><ellipse cx="64" cy="56" rx="13" ry="19" fill="#6B4430" transform="rotate(20 64 56)"/><path d="M59 40C67 50 60 62 68 72" stroke="#3A2215" stroke-width="2.5" fill="none" transform="rotate(20 64 56)"/>`],
+ honey:['#FBEFD3',`<path d="M50 18C60 34 74 48 74 62C74 76 63 84 50 84C37 84 26 76 26 62C26 48 40 34 50 18Z" fill="#E8A317"/><ellipse cx="41" cy="60" rx="5" ry="9" fill="#fff" opacity=".35"/>`]
+};
+
+/* ---------- Data ---------- */
+const MOODS = {
+  season:{label:"In season now", note:"Fresh produce at its peak this month"},
+  bright:{label:"Bright & sharp", note:"Acid, citrus and fresh fruit", ids:["lemon","lime","orange","rhubarb","pineapple","strawberry","tomato","goat cheese","ginger"]},
+  green:{label:"Fresh & green", note:"Herbs, crunch and cool water", ids:["basil","mint","cilantro","cucumber","lime","apple","pear","tomato"]},
+  earthy:{label:"Earthy", note:"Roots, fungi, nuts and ferment", ids:["beet","mushroom","walnut","miso","sesame","rosemary","coffee","black pepper"]},
+  rich:{label:"Rich & roasted", note:"Fat, roast and deep sweetness", ids:["dark chocolate","coffee","parmesan","blue cheese","miso","walnut","coconut","honey","fig","vanilla"]},
+  spice:{label:"Warm spice", note:"Heat and aromatic warmth", ids:["cinnamon","cardamom","ginger","black pepper","chili","vanilla"]},
+  all:{label:"Everything", note:"The full pantry"}
+};
+// Typical Northern Hemisphere (US) peak months; null = available year-round / pantry
+const SEASON = {strawberry:[5,6,7], tomato:[7,8,9], orange:[11,12,1,2,3], lemon:[11,12,1,2,3,4], apple:[9,10,11], pear:[8,9,10,11,12], fig:[8,9,10], rhubarb:[4,5,6], basil:[6,7,8,9], mint:[5,6,7,8,9], chili:[7,8,9,10], cucumber:[6,7,8,9], beet:[7,8,9,10,11,12], mushroom:[9,10,11], cilantro:[4,5,6,9,10]};
+const NOW = new Date().getMonth()+1;
+const MONTH = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
+MOODS.season.label = "In season · " + MONTH[NOW-1];
+
+const PROFILE = {
+  strawberry:{profile:"Sweet, jammy and floral, with a green note near the hull and a creamy, peach-like finish when fully ripe.",
+    compounds:[["Furaneol","caramel, cooked-sugar"],["Mesifurane","sweet, sherry-like"],["Ethyl hexanoate","fruity, pineapple-like"],["γ-Decalactone","peachy, creamy"]],
+    techniques:["Macerate with sugar or vinegar","Roast to concentrate","Pickle green (unripe) berries","Freeze-dry for powder"],
+    varieties:"June-bearing vs everbearing types; Chandler and Albion are common in the US; alpine strawberries (fraises des bois) are small and intensely aromatic.",
+    origins:"The modern garden strawberry is an 18th-century cross of two American species. Leading producers include China, the US (California) and Mexico."},
+  basil:{profile:"Sweet and peppery with clove and anise undertones; bruises and darkens quickly once cut.",
+    compounds:[["Linalool","floral, citrusy"],["Estragole","anise, tarragon"],["Eugenol","clove"],["1,8-Cineole","fresh, eucalyptus"]],
+    techniques:["Tear raw at the last moment","Pound into pesto","Blanch and shock to keep color in oils","Fry leaves until glassy"],
+    varieties:"Genovese (sweet, classic Italian); Thai basil (strong anise); lemon basil; holy basil, or tulsi (peppery, clove-forward).",
+    origins:"Native to tropical Asia and India. Liguria in Italy is famous for Genovese basil, which has protected status there."},
+  tomato:{profile:"Sweet-acid balance with savory depth and a green, vine-like top note that fades in cold storage.",
+    compounds:[["(Z)-3-Hexenal","fresh-cut green"],["β-Ionone","floral, violet"],["Furaneol","caramel-sweet"],["2-Isobutylthiazole","tomato vine"],["Glutamate","umami (taste)"]],
+    techniques:["Salt and drain to concentrate","Slow-roast or confit","Clarify into tomato water","Concassé (peel, seed, dice)"],
+    varieties:"Cherry and grape (sweetest); beefsteak (slicing); San Marzano and other plum types (sauce); heirlooms (open-pollinated, varied flavor).",
+    origins:"Wild ancestors come from western South America. China, India and the US are among the largest producers today."},
+  lemon:{profile:"Sharp, clean acidity from the juice; the zest carries most of the aroma, sweet and floral rather than sour.",
+    compounds:[["Limonene","citrus peel"],["Citral","lemony, sharp"],["β-Pinene","pine, fresh"],["Citric acid","sourness (taste)"]],
+    techniques:["Microplane zest for aroma","Preserve in salt","Char cut-side down","Supreme for clean segments"],
+    varieties:"Eureka and Lisbon (standard, very sour); Meyer (a lemon-mandarin hybrid, sweeter and floral); Amalfi lemons (large, thick, fragrant peel).",
+    origins:"Thought to originate in South Asia. Major producers include India, Mexico, China and Spain."},
+  ginger:{profile:"Hot and lemony when fresh; drying or cooking shifts it toward deeper, sharper warmth.",
+    compounds:[["Gingerol","pungent heat (fresh)"],["Shogaol","sharper heat (dried or cooked)"],["Zingiberene","warm, spicy"],["Citral","lemony"]],
+    techniques:["Grate and squeeze for juice","Julienne and fry crisp","Candy in syrup","Quick-pickle (gari)"],
+    varieties:"Young ginger (thin skin, juicy, mild) vs mature ginger (fibrous, hot). Galangal looks similar but is a different plant with a piney, citrusy bite.",
+    origins:"Domesticated in Maritime Southeast Asia. India is the largest producer, followed by Nigeria and China."},
+  mushroom:{profile:"Savory, earthy and woodsy; browning brings out nutty, meaty depth.",
+    compounds:[["1-Octen-3-ol","classic mushroom"],["Glutamate","umami (taste)"],["Guanylate","boosts umami, high in dried shiitake"]],
+    techniques:["Dry-sauté in a hot pan before adding fat","Roast whole","Dehydrate and grind to powder","Pickle"],
+    varieties:"Button, cremini and portobello are the same species at different stages. Shiitake (smoky, savory), porcini (nutty), chanterelle (apricot-like, peppery).",
+    origins:"Cultivated worldwide, with China producing the most by far. Wild porcini and chanterelles are foraged in temperate forests in autumn."},
+  "dark chocolate":{profile:"Bitter and roasted with fruity acidity; fine cacao can show floral, red-fruit or nutty notes.",
+    compounds:[["Pyrazines","roasted, nutty"],["3-Methylbutanal","malty, chocolatey"],["Linalool","floral (fine cacao)"],["Theobromine","bitterness (taste)"]],
+    techniques:["Temper for snap and shine","Emulsify into ganache","Grate into savory sauces such as mole","Bloom cocoa in hot fat"],
+    varieties:"Criollo (delicate, rare), Forastero (robust, most common) and Trinitario (a hybrid of the two). Percentage marks total cacao content.",
+    origins:"Cacao is native to the upper Amazon. Côte d'Ivoire and Ghana grow most of the world's supply."},
+  coffee:{profile:"Roasted and bitter with acidity; light roasts lean fruity and floral, dark roasts smoky and bittersweet.",
+    compounds:[["2-Furfurylthiol","roasted coffee"],["Pyrazines","roasted, nutty"],["Guaiacol","smoky, spicy"],["Chlorogenic acids","bitterness, acidity"]],
+    techniques:["Brew or cold-brew as a liquid","Grind into a dry rub for meat or mushrooms","Infuse cream or butter","Reduce into a glaze"],
+    varieties:"Arabica (aromatic, more acidity) vs Robusta (more bitter, more caffeine). Gesha is a prized, highly floral Arabica variety.",
+    origins:"Arabica originated in Ethiopia. Brazil, Vietnam and Colombia are the largest producers."}
+};
+
+const EDGES = `strawberry|basil|A|3|Green, floral top notes lift the berry
+strawberry|tomato|A|2|Both carry furaneol, a caramel-sweet aroma
+strawberry|black pepper|C|2|Pepper heat sharpens ripe sweetness
+strawberry|rhubarb|T|3|Rhubarb's acidity balances berry sugar
+strawberry|vanilla|T|2|Vanilla rounds out the fruit
+strawberry|pineapple|A|2|Shared furaneol and fruity esters
+strawberry|dark chocolate|T|2|Bitter cocoa against bright fruit
+strawberry|mint|T|1|Cooling herb freshens the berry
+strawberry|goat cheese|C|2|Tangy cream against sweet fruit
+tomato|basil|T|3|Mediterranean cornerstone
+tomato|parmesan|A|3|Both rich in glutamate: stacked umami
+tomato|chili|T|2|Heat on acid-sweet fruit
+tomato|cilantro|T|1|Fresh salsa pairing
+tomato|cucumber|T|2|Cool, watery foil
+orange|dark chocolate|T|3|Citrus oil cuts cocoa richness
+orange|cardamom|A|2|Shared citrusy terpenes
+orange|rosemary|A|2|Shared pine-citrus terpenes
+orange|cinnamon|T|2|Warm spice with citrus oil
+orange|coffee|C|1|Citrus acidity against roast
+orange|fig|T|1|Jammy fruit with zest
+lemon|ginger|A|3|Both carry citral
+lemon|honey|T|3|Sweet-sour balance
+lemon|basil|A|2|Basil's citrus-floral notes echo lemon
+lemon|rosemary|T|2|Resinous herb and bright acid
+lime|mint|T|3|Bright and cooling
+lime|cilantro|T|3|Bright, green, citrusy
+lime|chili|T|3|Acid and heat
+lime|coconut|T|3|Tart acid cuts rich fat
+lime|ginger|A|2|Shared citral
+lime|cucumber|T|2|Clean and green
+lime|pineapple|T|2|Acid sharpens tropical sugar
+apple|cinnamon|T|3|Warm-spice classic
+apple|ginger|T|2|Spice brightens the fruit
+apple|blue cheese|C|2|Crisp sweetness against funk
+apple|walnut|T|2|Waldorf-style crunch
+apple|honey|T|2|Floral sweetness on tart fruit
+apple|vanilla|T|1|Soft, bakery warmth
+pear|blue cheese|C|3|Juicy sweetness against salt and funk
+pear|walnut|T|3|Nutty, tannic contrast
+pear|ginger|T|2|Spice wakes up mellow fruit
+pear|vanilla|A|2|Soft, creamy fruit aromas
+pear|cardamom|A|2|Floral spice suits pear
+pear|honey|T|1|Gentle, floral sweetness
+pineapple|coconut|T|3|Tropical classic
+pineapple|chili|C|3|Heat sharpens the sugar
+pineapple|black pepper|C|2|Pepper bite on tropical sweet
+pineapple|mint|T|1|Cooling lift
+pineapple|ginger|T|2|Spicy, juicy, bright
+coconut|cilantro|T|2|Southeast Asian curry base
+coconut|ginger|T|3|Rich fat carries warm spice
+coconut|dark chocolate|T|2|Creamy tropical with cocoa
+coconut|chili|C|2|Fat tames heat
+coconut|vanilla|A|2|Shared creamy, lactone-sweet notes
+fig|goat cheese|C|3|Jammy sweetness against tang
+fig|honey|T|3|Deep, honeyed fruit
+fig|walnut|T|3|Nut and dried fruit
+fig|rosemary|T|2|Resin against jammy fruit
+fig|blue cheese|C|2|Sweet fruit tames funk
+fig|cardamom|T|1|Middle Eastern warmth
+rhubarb|ginger|T|3|Sharp fruit with warm spice
+rhubarb|vanilla|T|2|Cream softens sourness
+rhubarb|orange|T|2|Two kinds of tartness
+cucumber|mint|T|3|Cooling, green
+cucumber|sesame|T|2|Smashed-cucumber salad
+cucumber|goat cheese|C|1|Crisp water against cream
+cucumber|basil|A|1|Shared green aromatics
+basil|mint|A|2|Same herb family, shared green notes
+basil|parmesan|T|3|Pesto
+basil|goat cheese|T|1|Herb and fresh cheese
+basil|walnut|T|1|Pesto variation
+mint|dark chocolate|T|3|Cool herb against bitter cocoa
+mint|chili|C|1|Cooling against heat
+rosemary|mushroom|A|2|Woody, earthy
+rosemary|honey|T|2|Resin and floral sweetness
+rosemary|parmesan|T|1|Savory herb on aged cheese
+cilantro|chili|T|3|Salsa and curry base
+cilantro|ginger|T|2|Bright Asian aromatics
+ginger|honey|T|3|Sweet heat
+ginger|sesame|T|3|East Asian backbone
+ginger|miso|T|2|Warm spice with savory ferment
+ginger|dark chocolate|C|1|Heat lifts cocoa
+ginger|cardamom|A|2|Same botanical family
+black pepper|parmesan|T|3|Cacio e pepe
+black pepper|mushroom|T|2|Pepper on earthy umami
+black pepper|honey|C|1|Heat with sweetness
+black pepper|dark chocolate|C|1|Spice on bitter cocoa
+chili|dark chocolate|T|3|Mexican mole tradition
+chili|honey|C|2|Hot honey
+chili|sesame|T|2|Chili crisp
+cinnamon|coffee|T|2|Café de olla
+cinnamon|dark chocolate|T|2|Mexican chocolate
+cinnamon|vanilla|T|2|Baking-spice warmth
+cardamom|coffee|T|3|Arabic coffee
+cardamom|dark chocolate|T|1|Floral spice on cocoa
+cardamom|vanilla|T|1|Warm, floral sweetness
+vanilla|coffee|T|2|Sweet roast
+vanilla|dark chocolate|T|2|Rounds out bitterness
+vanilla|honey|T|1|Soft sweetness
+beet|goat cheese|C|3|Earthy sweetness against tang
+beet|walnut|T|2|Earth and nut
+beet|orange|T|2|Citrus brightens earthiness
+beet|dark chocolate|A|2|Earthy, cocoa-like depth
+beet|ginger|T|1|Spice wakes up earth
+mushroom|parmesan|A|3|Shared glutamate
+mushroom|miso|A|3|Fermented umami on umami
+mushroom|walnut|A|2|Earthy, nutty
+mushroom|sesame|T|1|Nutty, savory
+mushroom|coffee|A|1|Roasty, earthy depth
+parmesan|walnut|T|2|Nutty, salty
+parmesan|honey|C|2|Salty crystals with honey
+blue cheese|walnut|T|3|Bitter nut against creamy funk
+blue cheese|honey|C|3|Sweet against salty funk
+blue cheese|dark chocolate|A|2|Shared fermented, savory notes
+goat cheese|honey|C|3|Floral sweetness on tang
+goat cheese|walnut|T|2|Crunch and cream
+miso|sesame|T|3|Japanese dressing base
+miso|honey|C|3|Salt-sweet glaze
+miso|dark chocolate|C|2|Salt and umami deepen cocoa
+sesame|honey|T|3|Sesame brittle
+sesame|dark chocolate|T|2|Tahini chocolate
+walnut|honey|T|2|Nut and honey
+walnut|coffee|A|2|Roasted, nutty
+walnut|dark chocolate|T|2|Brownie logic
+dark chocolate|coffee|A|3|Both roasted: shared pyrazines`;
+
+const EXAMPLE = {key:"basil+strawberry|bold|", card:{
+  name:"Strawberry & Tomato, Basil Whey, Cracked Pepper",
+  concept:"A cold summer starter where two furaneol-rich fruits meet, held together by basil.",
+  spec:[{item:"Ripe strawberries, halved",amount:"80 g"},{item:"Heirloom cherry tomatoes, halved",amount:"80 g"},{item:"Basil whey (basil blended with yogurt whey)",amount:"40 ml"},{item:"Fresh goat cheese",amount:"25 g"},{item:"Black pepper, coarsely cracked",amount:"to taste"},{item:"Flaky salt, olive oil",amount:"to finish"}],
+  method:["Salt the tomatoes lightly and let them sit 10 minutes to draw juice.","Blend basil with cold whey, strain and chill.","Arrange the fruit in a shallow bowl and spoon over the basil whey.","Dot with goat cheese, then finish with pepper, flaky salt and oil."],
+  technique:"Raw · cold infusion",
+  why:"Strawberry and tomato share caramel-sweet furaneol, so they read as one fruit. Basil pairs strongly with both and bridges them; goat cheese and pepper add contrast."
+}};
+
+/* ---------- Dataset: 500 ingredients ---------- */
+// Old hand-curated names -> dataset ids
+const OLD2ID = {"black pepper":"black_pepper","chili":"cayenne","dark chocolate":"cocoa","parmesan":"parmesan_cheese","blue cheese":"blue_cheese","goat cheese":"goat_cheese","sesame":"sesame_seed"};
+const toId = n => OLD2ID[n] || n;
+const ART = {}; Object.keys(G).forEach(k => ART[toId(k)] = k);
+let ING = [], BY = {}, IDS = [], COMPS = [], NREC = 0, SOURCE = "";
+const nameOf = id => BY[id] ? BY[id].name : id;
+const CATS = ["Fruit","Vegetable","Herb","Spice","Flower","Dairy","Meat","Seafood","Grain","Nut, seed & pulse","Pantry","Egg & animal product","Plant","Wine & spirits"];
+
+/* Generic illustrations by category, so every one of the 500 has a picture */
+const CATSTYLE = {
+  "Fruit":{bg:"#FBE7DF", cols:["#E0402F","#F28C28","#F2CF3A","#6FA83C","#8E3B6E","#C8312E","#E86A8E"], g:"fruit"},
+  "Vegetable":{bg:"#E6F0DD", cols:["#3D7A3A","#6FA83C","#E07A2F","#7B1E45","#B9A04A","#8DB65A"], g:"veg"},
+  "Herb":{bg:"#E2F0DE", cols:["#3F9142","#4E7A5A","#5CB85C","#2F6B3F","#7FA35A"], g:"herb"},
+  "Spice":{bg:"#F6E8DA", cols:["#B06A36","#C0392B","#D9A03F","#7A4523","#8A6E2F"], g:"spice"},
+  "Flower":{bg:"#F6E4F0", cols:["#D96AA7","#9B6BC8","#F2B134","#E86A8E","#F4F0F8"], g:"flower"},
+  "Dairy":{bg:"#F5F1E6", cols:["#F2D27A","#F7F4EC","#EFE5C8","#E9D9A6"], g:"dairy"},
+  "Meat":{bg:"#F6E1DD", cols:["#B5473A","#9C3B30","#C86A5A","#8A3A2E"], g:"meat"},
+  "Seafood":{bg:"#E1EEF4", cols:["#5B8FB0","#E07A5F","#8AA6B8","#D9825B","#4F6D9A"], g:"fish"},
+  "Grain":{bg:"#F6EEDB", cols:["#D9B25A","#C99A3E","#B88A3A","#E2C27A"], g:"grain"},
+  "Nut, seed & pulse":{bg:"#F1E6DA", cols:["#A9774B","#7E532F","#C89B6A","#5E3A29","#D9B27C"], g:"nut"},
+  "Pantry":{bg:"#EDE6DF", cols:["#7A5034","#B33A3A","#4A6A82","#C79A4E","#3B2A20"], g:"jar"},
+  "Egg & animal product":{bg:"#F3EEE6", cols:["#F2E6D0","#E8C9A0"], g:"egg"},
+  "Plant":{bg:"#E5EFE2", cols:["#4E9A47","#6E9440","#3A7D35"], g:"sprout"},
+  "Wine & spirits":{bg:"#EFE2EA", cols:["#7A1E3E","#C8A24A","#B5652B","#E9C9C9","#4A6A3A"], g:"bottle"}
+};
+const GLYPH = {
+  fruit:c=>`<circle cx="50" cy="56" r="26" fill="${c}"/><ellipse cx="40" cy="47" rx="6" ry="4" fill="#fff" opacity=".3"/><path d="M50 30L52 20" stroke="#6B4423" stroke-width="3" stroke-linecap="round"/><path d="M53 27C58 19 68 19 70 23C64 28 58 29 53 27Z" fill="#3E8E41"/>`,
+  veg:c=>`<path d="M50 84C38 84 30 72 32 58C34 46 42 40 50 40C58 40 66 46 68 58C70 72 62 84 50 84Z" fill="${c}"/><path d="M50 42C44 30 36 24 30 24C34 32 40 38 48 42M50 42C52 28 50 18 46 14M50 42C58 30 66 26 72 26C68 34 60 38 52 42" fill="#3E8E41" stroke="#3E8E41" stroke-width="3"/>`,
+  herb:c=>`<path d="M50 84C30 72 24 46 34 30C42 18 58 18 66 30C76 46 70 72 50 84Z" fill="${c}"/><path d="M50 84L50 30M50 50L40 42M50 62L38 54M50 50L60 42M50 62L62 54" stroke="#fff" stroke-opacity=".35" stroke-width="2"/>`,
+  spice:c=>`<path d="M20 72C24 52 38 42 50 42C62 42 76 52 80 72Z" fill="${c}"/><g fill="#fff" opacity=".35"><circle cx="40" cy="56" r="2"/><circle cx="54" cy="52" r="2"/><circle cx="62" cy="62" r="2"/><circle cx="46" cy="66" r="2"/></g><rect x="18" y="72" width="64" height="6" rx="3" fill="#6B4A33"/>`,
+  flower:c=>`<g fill="${c}">${[0,72,144,216,288].map(a=>`<ellipse cx="50" cy="32" rx="11" ry="17" transform="rotate(${a} 50 52)"/>`).join("")}</g><circle cx="50" cy="52" r="9" fill="#F2B134"/>`,
+  dairy:c=>`<path d="M18 70L76 30L82 70Z" fill="${c}"/><path d="M76 30L82 70L86 68L80 28Z" fill="#000" opacity=".12"/><g fill="#000" opacity=".08"><circle cx="58" cy="56" r="4"/><circle cx="44" cy="63" r="3"/><circle cx="70" cy="62" r="2.5"/></g>`,
+  meat:c=>`<path d="M24 50C24 34 44 26 60 30C76 34 82 48 76 60C70 74 50 80 36 74C28 70 24 62 24 50Z" fill="${c}"/><path d="M30 48C40 40 56 38 68 46" stroke="#F7EDE4" stroke-width="5" fill="none" stroke-linecap="round"/><circle cx="58" cy="58" r="6" fill="#F7EDE4"/>`,
+  fish:c=>`<ellipse cx="46" cy="52" rx="26" ry="15" fill="${c}"/><path d="M70 52L86 38L84 66Z" fill="${c}"/><circle cx="32" cy="48" r="3" fill="#1E2A30"/><path d="M42 44C46 50 46 56 42 60" stroke="#fff" stroke-opacity=".5" stroke-width="2" fill="none"/>`,
+  grain:c=>`<path d="M50 88L50 24" stroke="${c}" stroke-width="3"/><g fill="${c}">${[28,38,48,58].map(y=>`<ellipse cx="42" cy="${y}" rx="7" ry="4" transform="rotate(-35 42 ${y})"/><ellipse cx="58" cy="${y}" rx="7" ry="4" transform="rotate(35 58 ${y})"/>`).join("")}<ellipse cx="50" cy="20" rx="4" ry="7"/></g>`,
+  nut:c=>`<ellipse cx="50" cy="54" rx="24" ry="22" fill="${c}"/><path d="M50 32V76M34 44C40 48 38 56 32 58M66 44C60 48 62 56 68 58" stroke="#000" stroke-opacity=".2" stroke-width="2.2" fill="none" stroke-linecap="round"/>`,
+  jar:c=>`<rect x="30" y="34" width="40" height="46" rx="8" fill="${c}"/><rect x="28" y="26" width="44" height="10" rx="3" fill="#6B4A33"/><rect x="36" y="48" width="28" height="16" rx="2" fill="#FFF6E8" opacity=".85"/>`,
+  egg:c=>`<path d="M50 20C64 20 74 44 74 60C74 74 64 84 50 84C36 84 26 74 26 60C26 44 36 20 50 20Z" fill="${c}"/><ellipse cx="42" cy="46" rx="5" ry="9" fill="#fff" opacity=".45"/>`,
+  sprout:c=>`<path d="M50 86L50 46" stroke="#5B4632" stroke-width="3"/><path d="M50 50C40 30 26 28 20 32C26 44 38 50 50 50Z" fill="${c}"/><path d="M50 46C58 26 74 22 80 26C76 40 62 46 50 46Z" fill="${c}"/>`,
+  bottle:c=>`<path d="M44 14H56V34C64 38 66 44 66 52V82C66 85 64 86 62 86H38C36 86 34 85 34 82V52C34 44 36 38 44 34Z" fill="${c}"/><rect x="38" y="56" width="24" height="16" rx="2" fill="#FFF6E8" opacity=".85"/><rect x="43" y="10" width="14" height="6" rx="2" fill="#3B2A20"/>`
+};
+function hash(s){ let h=0; for (const ch of s) h=(h*31+ch.charCodeAt(0))|0; return Math.abs(h); }
+function art(id, size){
+  const sz = size||100;
+  if (ART[id]){ const [bg, body] = G[ART[id]]; return `<svg viewBox="0 0 100 100" width="${sz}" height="${sz}" aria-hidden="true"><circle cx="50" cy="50" r="49" fill="${bg}"/>${body}</svg>`; }
+  const ing = BY[id], st = CATSTYLE[ing ? ing.cat : "Plant"] || CATSTYLE.Plant;
+  const c = st.cols[hash(id) % st.cols.length];
+  return `<svg viewBox="0 0 100 100" width="${sz}" height="${sz}" aria-hidden="true"><circle cx="50" cy="50" r="49" fill="${st.bg}"/>${GLYPH[st.g](c)}</svg>`;
+}
+
+const adj = {};
+const rel = (a,b) => (adj[a]||[]).find(e => e.id === b);
+const TYPE = {A:"Aroma", C:"Contrast", T:"Classic"};
+function addEdge(a,b,t,s,n){ (adj[a] ||= []).push({id:b,t,s,n}); (adj[b] ||= []).push({id:a,t,s,n}); }
+function dropEdge(a,b){ if (adj[a]) adj[a]=adj[a].filter(e=>e.id!==b); if (adj[b]) adj[b]=adj[b].filter(e=>e.id!==a); }
+
+function loadData(d){
+  SOURCE = d.source; NREC = d.recipes; COMPS = d.compounds;
+  ING = d.ingredients.slice();
+  ING.push({id:"miso", name:"Miso", cat:"Pantry", pop:0, nc:0, comps:[], curatedOnly:true});
+  ING.forEach(x => BY[x.id] = x);
+  IDS = ING.map(x => x.id);
+  d.edges.forEach(([a,b,t,s,sh,cs,co,lift]) => {
+    const parts = [];
+    if (t==="A"){ parts.push(`Share ${sh} flavor compounds` + (cs.length ? `, e.g. ${cs.map(c=>COMPS[c]).join(" and ")}` : ""));
+                  if (co) parts.push(`also cooked together in ${co.toLocaleString()} recipes`); }
+    else { parts.push(`Together in ${co.toLocaleString()} recipes, ${lift}× more often than chance`);
+           if (sh) parts.push(`share ${sh} flavor compounds`); }
+    addEdge(ING[a].id, ING[b].id, t, s, parts.join("; "));
+  });
+  // hand-curated notes (including Contrast pairs) override the computed ones
+  EDGES.trim().split("\n").forEach(l => {
+    const [a0,b0,t,s,n] = l.split("|"), a = toId(a0), b = toId(b0);
+    if (!BY[a] || !BY[b]) return;
+    dropEdge(a,b); addEdge(a,b,t,+s,n);
+  });
+  Object.keys(SEASON).forEach(k => { const v = SEASON[k]; delete SEASON[k]; SEASON[toId(k)] = v; });
+  Object.keys(PROFILE).forEach(k => { const v = PROFILE[k]; delete PROFILE[k]; PROFILE[toId(k)] = v; });
+  Object.values(MOODS).forEach(m => { if (m.ids) m.ids = m.ids.map(toId); });
+  MOODS.season.ids = Object.keys(SEASON).filter(id => SEASON[id].includes(NOW));
+}
+
+/* ---------- State ---------- */
+const state = { door:{kind:"mood", key:null}, plate:[], inspect:"strawberry", tone:"bold", cons:new Set(), card:null, tab:"ing", q:"" };
+const CONS = ["Vegetarian","Under 30 min","Fine-dining plate","Dessert"];
+const MAXV = 34;   // ingredients on stage at once
+
+const $ = id => document.getElementById(id);
+function el(tag, attrs={}, ...kids){
+  const n = document.createElement(tag);
+  for (const [k,v] of Object.entries(attrs)){
+    if (k === "class") n.className = v;
+    else if (k === "html") n.innerHTML = v;
+    else if (k.startsWith("on")) n.addEventListener(k.slice(2), v);
+    else if (v !== false && v != null) n.setAttribute(k, v);
+  }
+  for (const k of kids.flat()) if (k != null && k !== false) n.append(k.nodeType ? k : document.createTextNode(k));
+  return n;
+}
+const tag = t => el("span",{class:"tag "+t}, TYPE[t]);
+let toastT;
+function toast(msg){ const t=$("toast"); t.textContent=msg; t.classList.add("show"); clearTimeout(toastT); toastT=setTimeout(()=>t.classList.remove("show"),2200); }
+
+/* ---------- Doors: moods + categories (D) ---------- */
+function byPop(a,b){ return (BY[b].pop - BY[a].pop) || (BY[b].nc - BY[a].nc); }
+function doorIds(){
+  const d = state.door;
+  if (d.kind==="cat") return IDS.filter(id => BY[id].cat===d.key).sort(byPop);
+  if (d.kind==="mood" && d.key && MOODS[d.key].ids) return MOODS[d.key].ids.filter(id=>BY[id]);
+  return IDS.slice().sort(byPop);
+}
+function doorLabel(){ const d=state.door; return d.kind==="cat" ? d.key : d.key ? MOODS[d.key].label : "Everything"; }
+function buildEntry(){
+  const doors = $("doors");
+  Object.entries(MOODS).forEach(([k,m]) => {
+    if (k==="all") return;
+    const sample = m.ids.slice(0,4);
+    doors.append(el("button",{type:"button", class:"door"+(k==="season"?" season":""), onclick:()=>chooseDoor("mood",k)},
+      el("span",{class:"mini", html: sample.map(id=>art(id,28)).join("")}),
+      el("b",{}, m.label), el("small",{}, k==="season" ? `${m.ids.length} ingredients at their peak` : m.note)));
+  });
+  doors.append(el("button",{type:"button", class:"door", onclick:()=>chooseDoor("all")},
+    el("span",{class:"mini", html: IDS.slice().sort(byPop).slice(0,4).map(id=>art(id,28)).join("")}),
+    el("b",{}, "Most used"), el("small",{}, `The most common of all ${IDS.length} ingredients`)));
+  const cats = $("entryCats");
+  CATS.forEach(c => { const n = IDS.filter(id=>BY[id].cat===c).length; if (n) cats.append(el("button",{type:"button", class:"chip", onclick:()=>chooseDoor("cat",c)}, `${c} · ${n}`)); });
+
+  const bar = $("moodChips");
+  Object.entries(MOODS).forEach(([k,m]) => { if (k!=="all") bar.append(el("button",{type:"button", class:"chip", "data-door":"mood:"+k, "aria-pressed":"false", onclick:()=>chooseDoor("mood",k)}, m.label)); });
+  bar.append(el("span",{class:"sep"}));
+  CATS.forEach(c => { if (IDS.some(id=>BY[id].cat===c)) bar.append(el("button",{type:"button", class:"chip", "data-door":"cat:"+c, "aria-pressed":"false", onclick:()=>chooseDoor("cat",c)}, c)); });
+  bar.append(el("button",{type:"button", class:"chip", "data-door":"all:", "aria-pressed":"false", onclick:()=>chooseDoor("all")}, "Most used"));
+}
+function chooseDoor(kind, key=null){
+  state.door = {kind, key}; $("entry").hidden = true;
+  const want = kind+":"+(key||"");
+  document.querySelectorAll("#moodChips .chip").forEach(c => c.setAttribute("aria-pressed", String(c.dataset.door===want)));
+  layout();
+}
+
+/* ---------- Search ---------- */
+function renderSearch(){
+  const q = state.q.trim().toLowerCase(), box = $("qres");
+  box.replaceChildren();
+  if (!q){ box.hidden = true; return; }
+  const hits = IDS.filter(id => BY[id].name.toLowerCase().includes(q))
+    .sort((a,b)=> (BY[a].name.toLowerCase().startsWith(q)?0:1)-(BY[b].name.toLowerCase().startsWith(q)?0:1) || byPop(a,b)).slice(0,8);
+  if (!hits.length) box.append(el("p",{class:"qnone"},`No ingredient matches "${state.q}".`));
+  hits.forEach(id => box.append(el("div",{class:"qrow"},
+    el("button",{type:"button", class:"qopen", onclick:()=>{ inspect(id); closeSearch(); }}, el("span",{html:art(id,26)}), el("span",{}, BY[id].name), el("small",{}, BY[id].cat)),
+    el("button",{type:"button", class:"qadd", "aria-label":`Add ${BY[id].name} to plate`, onclick:()=>{ addToPlate(id); closeSearch(); }}, "+ Plate"))));
+  box.hidden = false;
+}
+function closeSearch(){ state.q=""; $("q").value=""; renderSearch(); }
+
+/* ---------- Stage (B + C) ---------- */
+const toks = {};
+function token(id){
+  if (toks[id]) return toks[id];
+  const face = el("button",{type:"button", class:"face", "aria-label":`${nameOf(id)}: open profile. Drag onto the plate to add.`, html:art(id)});
+  const rm = el("button",{type:"button", class:"rm", "aria-label":`Remove ${nameOf(id)} from plate`, onclick:e=>{e.stopPropagation(); removeFromPlate(id);}},"×");
+  const t = el("div",{class:"tok gone","data-id":id}, face, el("span",{class:"name"}, nameOf(id)), rm);
+  $("stage").append(t);
+  toks[id] = {el:t, face, x:geom.cx||0, y:geom.cy||0, size:40};
+  t.style.transform = `translate(${(geom.cx||0)-20}px, ${(geom.cy||0)-20}px)`;
+  attachDrag(id, face);
+  face.addEventListener("mouseenter", ()=>hover(id)); face.addEventListener("focus", ()=>hover(id));
+  face.addEventListener("mouseleave", ()=>hover(null)); face.addEventListener("blur", ()=>hover(null));
+  return toks[id];
+}
+
+function candidates(){
+  const p = state.plate, out = {};
+  const seen = new Set();
+  p.forEach(x => (adj[x]||[]).forEach(e => seen.add(e.id)));
+  seen.forEach(id => {
+    if (p.includes(id)) return;
+    const rels = p.map(x => ({with:x, e:rel(x,id)})).filter(r=>r.e);
+    if (rels.length) out[id] = {rels, n:rels.length, score:rels.reduce((a,r)=>a+r.e.s,0), t:rels.slice().sort((a,b)=>b.e.s-a.e.s)[0].e.t};
+  });
+  return out;
+}
+
+let geom = {};
+function layout(){
+  const stage = $("stage"), W = stage.clientWidth, H = stage.clientHeight;
+  if (!W || !H || !IDS.length) return;
+  const cx = W/2, cy = H/2 + 6;
+  const R = Math.max(150, Math.min(W, H)/2 - 46);
+  const k = Math.min(1, Math.max(.7, R/300));
+  const P = Math.max(62, R*.24);
+  geom = {cx, cy, P};
+  const plate = $("plate");
+  plate.style.width = plate.style.height = (P*2)+"px";
+  plate.style.left = (cx-P)+"px"; plate.style.top = (cy-P)+"px";
+  $("plateHint").style.display = state.plate.length ? "none" : "";
+
+  const rings = $("rings"); rings.innerHTML = "";
+  const hasPlate = state.plate.length > 0;
+  const R3 = P + (R-P)*.30, R2 = P + (R-P)*.62, R1 = P + (R-P)*.94;
+  if (hasPlate){
+    [[R3,"Strong"],[R2,"Good"],[R1,"Light"]].forEach(([r,l]) => {
+      const la = -0.32;
+      rings.insertAdjacentHTML("beforeend", `<ellipse cx="${cx}" cy="${cy}" rx="${r*1.18}" ry="${r*.9}" fill="none" stroke="var(--line)"/><text x="${cx + r*1.18*Math.cos(la) + 6}" y="${cy + r*.9*Math.sin(la)}">${l}</text>`);
+    });
+  }
+
+  const pos = {};
+  const pl = state.plate, ps = 54*k;
+  const offs = pl.length===1 ? [[0,0]] : pl.length===2 ? [[-.38,0],[.38,0]] : [[0,-.4],[-.38,.28],[.38,.28]];
+  pl.forEach((id,i) => pos[id] = {x:cx+offs[i][0]*P, y:cy+offs[i][1]*P, size:ps, op:1, cls:"onplate"});
+  let cands = {};
+
+  if (!hasPlate){
+    const order = doorIds().filter(id=>!pl.includes(id)).slice(0, MAXV);
+    const n = order.length, inner = P + 46*k;
+    order.forEach((id,i) => {
+      const r = inner + (R - inner + 10) * Math.sqrt((i+.5)/Math.max(n,12));
+      const a = i * 2.39996 - Math.PI/2;
+      pos[id] = {x:cx + r*Math.cos(a)*1.25, y:cy + r*Math.sin(a)*.92, size:(i<12?66:58)*k, op:1, cls:""};
+    });
+    $("stageNote").textContent = `${doorLabel()} · showing ${n} of ${doorIds().length}`;
+  } else {
+    cands = candidates(); const full = pl.length;
+    const fullList = Object.keys(cands).filter(id=>cands[id].n===full).sort((a,b)=>cands[b].score-cands[a].score || byPop(a,b));
+    const partList = full>1 ? Object.keys(cands).filter(id=>cands[id].n===full-1).sort((a,b)=>cands[b].score-cands[a].score || byPop(a,b)) : [];
+    const cap = {3:10, 2:13, 1:16}, rings3 = {3:[],2:[],1:[]};
+    fullList.slice(0, MAXV).forEach(id => {
+      let r = Math.max(1, Math.min(3, Math.round(cands[id].score/cands[id].n)));
+      while (r>=1 && rings3[r].length >= cap[r]) r--;
+      if (r>=1) rings3[r].push(id);
+    });
+    const byType = (a,b) => ("ACT".indexOf(cands[a].t) - "ACT".indexOf(cands[b].t)) || (cands[b].score-cands[a].score);
+    const place = (list, r, off, size, op, cls) => list.forEach((id,i) => {
+      const a = off + (i/list.length)*Math.PI*2;
+      pos[id] = {x:cx + r*Math.cos(a)*1.18, y:cy + r*Math.sin(a)*.9, size, op, cls};
+    });
+    place(rings3[3].sort(byType), R3, -Math.PI/2, 66*k, 1, "");
+    place(rings3[2].sort(byType), R2, -Math.PI/2+.4, 58*k, 1, "");
+    place(rings3[1].sort(byType), R1, -Math.PI/2+.8, 50*k, 1, "");
+    const shown = rings3[3].length+rings3[2].length+rings3[1].length;
+    const outer = partList.slice(0, Math.max(0, Math.min(10, MAXV+10-shown)));
+    place(outer, R1+30*k, -Math.PI/2+1.2, 42*k, .55, "dim");
+    $("stageNote").textContent = fullList.length > shown ? `Showing the top ${shown} of ${fullList.length} matches` : `${fullList.length} match${fullList.length===1?"":"es"}`;
+  }
+
+  Object.keys(pos).forEach(id => token(id));
+  Object.keys(toks).forEach(id => {
+    const t = toks[id], p = pos[id];
+    if (!p){ t.el.className = "tok gone"; t.el.style.opacity = 0; return; }
+    const x = Math.max(p.size/2+6, Math.min(W - p.size/2 - 6, p.x));
+    const y = Math.max(p.size/2+6, Math.min(H - p.size/2 - 34, p.y));
+    t.x = x; t.y = y; t.size = p.size;
+    t.face.style.width = t.face.style.height = p.size+"px";
+    t.el.style.transform = `translate(${x - p.size/2}px, ${y - p.size/2}px)`;
+    t.el.style.width = p.size+"px";
+    t.el.style.opacity = p.op;
+    t.el.className = "tok " + (p.cls||"") + (state.inspect===id ? " inspect":"");
+    t.el.dataset.t = (cands[id] && !p.cls) ? cands[id].t : "";
+    t.el.style.zIndex = p.cls==="onplate" ? 15 : (p.op<.6 ? 1 : 5);
+  });
+  hover(null);
+}
+
+function hover(id){
+  const c = $("caption"); c.replaceChildren();
+  if (!id){
+    if (!state.plate.length) c.append(state.door.key || state.door.kind!=="mood" ? "Tap an ingredient to read its profile. Drag it onto the plate to start a combination. Search finds any of the 500." : "");
+    else {
+      const n = Object.values(candidates()).filter(m=>m.n===state.plate.length).length;
+      c.append(el("b",{}, state.plate.map(nameOf).join(" + ")), ` · ${n} ingredient${n===1?"":"s"} pair with everything on the plate.`);
+    }
+    return;
+  }
+  c.append(el("b",{}, nameOf(id)));
+  if (state.plate.includes(id)) { c.append("is on the plate."); return; }
+  const rels = state.plate.map(x=>({x, e:rel(x,id)})).filter(r=>r.e);
+  if (!state.plate.length) c.append(`· ${BY[id].cat}. Drag onto the plate to see what it pairs with.`);
+  else if (!rels.length) c.append("has no recorded pairing with the plate.");
+  else rels.forEach(r => c.append(tag(r.e.t), `with ${nameOf(r.x)}: ${r.e.n}.`));
+}
+
+function addToPlate(id){
+  if (state.plate.includes(id)) return;
+  if (state.plate.length >= 3){ toast("The plate holds three ingredients. Remove one first."); layout(); return; }
+  const was = state.plate.length;
+  state.plate.push(id); state.card = null;
+  if (!state.door.key && state.door.kind==="mood") { $("entry").hidden = true; }
+  layout(); renderPlate(); renderIng();
+  if (!was) setTab("plate");
+}
+function removeFromPlate(id){
+  state.plate = state.plate.filter(x=>x!==id); state.card = null;
+  layout(); renderPlate(); renderIng();
+}
+
+function attachDrag(id, face){
+  let sx, sy, dragging=false, ox, oy;
+  face.addEventListener("pointerdown", e => {
+    if (e.button !== 0) return;
+    sx = e.clientX; sy = e.clientY; dragging = false;
+    face.setPointerCapture(e.pointerId);
+    const t = toks[id]; ox = t.x; oy = t.y;
+  });
+  face.addEventListener("pointermove", e => {
+    if (sx == null) return;
+    const dx = e.clientX - sx, dy = e.clientY - sy;
+    if (!dragging && Math.hypot(dx,dy) > 6){ dragging = true; toks[id].el.classList.add("drag"); }
+    if (dragging){
+      const t = toks[id], x = ox+dx, y = oy+dy;
+      t.el.style.transform = `translate(${x - t.size/2}px, ${y - t.size/2}px) scale(1.08)`;
+      const over = Math.hypot(x-geom.cx, y-geom.cy) < geom.P + 20;
+      $("plate").classList.toggle("hot", over && !state.plate.includes(id));
+    }
+  });
+  const end = e => {
+    if (sx == null) return;
+    const dx = e.clientX - sx, dy = e.clientY - sy; sx = null;
+    toks[id].el.classList.remove("drag"); $("plate").classList.remove("hot");
+    if (!dragging){ inspect(id); return; }
+    const x = ox+dx, y = oy+dy;
+    const over = Math.hypot(x-geom.cx, y-geom.cy) < geom.P + 20;
+    if (over && !state.plate.includes(id)) addToPlate(id);
+    else if (!over && state.plate.includes(id)) removeFromPlate(id);
+    else layout();
+  };
+  face.addEventListener("pointerup", end);
+  face.addEventListener("pointercancel", end);
+  face.addEventListener("keydown", e => { if (e.key==="Enter"||e.key===" "){ e.preventDefault(); inspect(id); }});
+}
+
+/* ---------- Side panel ---------- */
+function setTab(t){
+  state.tab = t;
+  $("tab-ing").setAttribute("aria-selected", String(t==="ing"));
+  $("tab-plate").setAttribute("aria-selected", String(t==="plate"));
+  $("p-ing").hidden = t!=="ing"; $("p-plate").hidden = t!=="plate";
+}
+function inspect(id){ state.inspect = id; renderIng(); setTab("ing"); Object.keys(toks).forEach(i=>toks[i].el.classList.toggle("inspect", i===id)); }
+
+function renderIng(){
+  const id = state.inspect, p = PROFILE[id], ing = BY[id], box = $("p-ing"); box.replaceChildren();
+  if (!ing) return;
+  const todo = t => el("p",{class:"todo"}, t || "To be added in the database phase.");
+  const dataComps = ing.comps.map(c => COMPS[c]);
+  box.append(
+    el("div",{class:"photo"}, el("span",{html:art(id,96)}), "Real photo appears here in the full detail page"),
+    el("h2",{}, ing.name),
+    el("p",{class:"facts"}, el("span",{class:"pill"}, ing.cat),
+      ing.nc ? el("span",{class:"pill"}, `${ing.nc} flavor compounds on record`) : null,
+      ing.pop ? el("span",{class:"pill"}, `in ${ing.pop.toLocaleString()} of ${NREC.toLocaleString()} recipes`) : null),
+    p ? el("p",{class:"profile"}, p.profile) : todo("Flavor description to be added in the database phase."),
+    el("p",{class:"eyebrow"}, p ? "Key aroma compounds" : "Aroma compounds (from compound data)"),
+    p ? el("div",{class:"pills"}, p.compounds.map(([n,d]) => el("span",{class:"pill"}, n+" ", el("i",{},"· "+d))))
+      : dataComps.length ? el("div",{class:"pills"}, dataComps.map(n => el("span",{class:"pill"}, n))) : todo("No compound data for this ingredient yet."),
+    el("p",{class:"eyebrow"},"Common techniques"),
+    p ? el("div",{class:"pills"}, p.techniques.map(t => el("span",{class:"pill"}, t))) : todo(),
+    el("p",{class:"eyebrow"},"Varieties and origin"),
+    el("dl",{}, el("dt",{},"Varieties"), el("dd",{}, p ? p.varieties : el("span",{class:"todo"},"To be added")),
+               el("dt",{},"Origin"), el("dd",{}, p ? p.origins : el("span",{class:"todo"},"To be added"))),
+    el("p",{class:"eyebrow"}, SEASON[id] ? "Peak season (US)" : "Season"),
+    SEASON[id] ? el("div",{class:"months"}, MONTH.map((m,i)=>el("span",{class:(SEASON[id].includes(i+1)?"on":"")+(i+1===NOW?" now":"")}, m[0]))) : todo("Season data to be added."),
+    el("p",{class:"eyebrow"},"Strongest matches"),
+    el("div",{class:"matches"}, (adj[id]||[]).slice().sort((a,b)=>b.s-a.s || (BY[b.id].pop-BY[a.id].pop)).slice(0,6).map(e => el("div",{}, tag(e.t), el("button",{type:"button", class:"linkish", onclick:()=>inspect(e.id)}, nameOf(e.id)), e.n))),
+    state.plate.includes(id)
+      ? el("button",{type:"button", class:"ghost", onclick:()=>removeFromPlate(id)},"Remove from plate")
+      : el("button",{type:"button", class:"cta", disabled: state.plate.length>=3 ? "" : false, onclick:()=>addToPlate(id)}, state.plate.length>=3 ? "Plate is full (3 max)" : "Add to plate")
+  );
+}
+
+function briefKey(){ return [...state.plate].sort().join("+")+"|"+state.tone+"|"+[...state.cons].sort().join(","); }
+
+function renderPlate(){
+  $("plateCount").textContent = state.plate.length;
+  const box = $("p-plate"); box.replaceChildren();
+  if (!state.plate.length){
+    box.append(el("div",{class:"empty"},"The plate is empty. Drag ingredients onto it, search for one, or open an ingredient and choose Add to plate."));
+    box.append(el("p",{class:"note"}, `Pairings are computed from ${SOURCE}. Aroma = shared flavor compounds; Classic = how often two ingredients appear together in ${NREC.toLocaleString()} recipes. Contrast pairs and notes for the original 33 ingredients are hand-curated.`));
+    return;
+  }
+  const pl = state.plate;
+  box.append(el("h2",{style:"margin-top:0"}, pl.map(nameOf).join(" + ")));
+  const pairs = [];
+  for (let i=0;i<pl.length;i++) for (let j=i+1;j<pl.length;j++) pairs.push([pl[i],pl[j],rel(pl[i],pl[j])]);
+  if (pairs.length){
+    box.append(el("p",{class:"eyebrow"},"Between your picks"),
+      el("div",{class:"matches"}, pairs.map(([a,b,e]) => el("div",{}, e?tag(e.t):null, el("b",{},`${nameOf(a)} × ${nameOf(b)}`), e ? e.n : "No direct pairing recorded; a bridge ingredient can connect them."))));
+  }
+  const c = candidates();
+  const bridges = Object.entries(c).filter(([,m])=>m.n===pl.length).sort((a,b)=>b[1].score-a[1].score || byPop(a[0],b[0])).slice(0,6);
+  box.append(el("p",{class:"eyebrow"}, pl.length===1 ? "Top matches" : "Bridges (pair with everything)"),
+    bridges.length ? el("div",{class:"matches"}, bridges.map(([id,m]) => el("div",{}, tag(m.t), el("button",{type:"button", class:"linkish", onclick:()=>inspect(id)}, nameOf(id)), pl.length===1 ? m.rels[0].e.n : `score ${m.score}`))) : el("p",{class:"todo"},"Nothing pairs with everything on the plate. Try swapping one ingredient."));
+
+  box.append(el("p",{class:"eyebrow"},"Constraints"),
+    el("div",{class:"opts"}, CONS.map(cn => el("button",{type:"button", class:"chip", "aria-pressed":String(state.cons.has(cn)), onclick:()=>{ state.cons.has(cn)?state.cons.delete(cn):state.cons.add(cn); renderPlate(); }}, cn))),
+    el("p",{class:"eyebrow"},"Direction"),
+    el("div",{class:"seg"}, [["classic","Classic"],["bold","Bold"]].map(([t,l]) => el("button",{type:"button","aria-pressed":String(state.tone===t), onclick:()=>{state.tone=t; renderPlate();}}, l))),
+    el("button",{type:"button", class:"cta", id:"go", disabled: busy?"":false, onclick:generate}, busy ? "Generating…" : "Generate dish"),
+    el("p",{class:"status", id:"status", role:"status"}, statusMsg));
+
+  const card = state.card && state.card.key===briefKey() ? state.card : (EXAMPLE.key===briefKey() ? EXAMPLE : null);
+  if (card) box.append(cardEl(card.card, card===EXAMPLE));
+
+  box.append(el("p",{class:"eyebrow"},"Similar dishes"),
+    el("div",{class:"similar"}, [0,1].map(() => el("div",{class:"sk"}, el("span",{class:"ph"}), el("span",{},"Existing dishes and chef references using this combination will appear here once the dish database is built.")))),
+    el("p",{class:"note"}, `Pairings computed from ${SOURCE}. Contrast pairs and notes for the original 33 ingredients are hand-curated.`));
+}
+
+function cardEl(d, isEx){
+  return el("article",{class:"card"},
+    el("div",{class:"kind"}, el("span",{},"Dish brief"), el("span",{}, isEx?"Example":"AI-generated")),
+    el("h3",{}, d.name||"Untitled"), el("p",{class:"concept"}, d.concept||""),
+    el("h4",{},"Components"),
+    el("table",{class:"spec"}, el("tbody",{}, (d.spec||[]).map(r => el("tr",{}, el("td",{},r.item||""), el("td",{},r.amount||""))))),
+    el("h4",{},"Method"), el("ol",{}, (d.method||[]).map(x=>el("li",{},x))),
+    d.technique ? el("p",{class:"meta"}, d.technique) : null,
+    d.why ? el("p",{class:"why"}, el("b",{},"Why it works. "), d.why) : null);
+}
+
+let busy = false, statusMsg = "", samplePromise = null;
+function getSample(){
+  if (!samplePromise) samplePromise = Promise.resolve(window.AI);
+  return samplePromise;
+}
+async function generate(){
+  if (busy || !state.plate.length) return;
+  const pl = [...state.plate], key = briefKey();
+  busy = true; statusMsg = ""; renderPlate();
+  try{
+    const sample = await getSample();
+    if (!sample){ statusMsg = "The AI service is not available right now."; return; }
+    const c = candidates();
+    const bridges = Object.entries(c).filter(([,m])=>m.n===pl.length).sort((a,b)=>b[1].score-a[1].score).slice(0,5).map(([id])=>nameOf(id));
+    const notes = [];
+    for (let i=0;i<pl.length;i++) for (let j=i+1;j<pl.length;j++){ const e=rel(pl[i],pl[j]); if(e) notes.push(`${nameOf(pl[i])} × ${nameOf(pl[j])}: ${TYPE[e.t]}, ${e.n}`); }
+    const prompt = `You are a creative chef de cuisine designing a new dish for professional cooks.
+Core ingredients (must feature): ${pl.map(nameOf).join(", ")}.
+Bridge ingredients that pair with all of them (optional, use 0-2): ${bridges.join(", ")||"none"}.
+Known pairing notes: ${notes.join("; ")||"none"}.
+Constraints: ${[...state.cons].join(", ")||"none"}.
+Direction: ${state.tone==="bold"?"bold and inventive, unexpected but coherent":"classic and refined, close to proven technique"}.
+Amounts are per plate, in grams or ml. Put the key technique(s) in 'technique'. Do not claim this is an existing named chef's recipe.
+Return only JSON: {"name":string,"concept":string (one sentence),"spec":[{"item":string,"amount":string}] (4-7 rows),"method":[string] (3-5 short steps),"technique":string,"why":string (1-2 sentences tying back to the pairing logic: shared aroma, contrast or tradition)}`;
+    statusMsg = "Thinking…"; renderPlate();
+    const card = await sample.json(prompt, {modelTier:"default"});
+    state.card = {key, card}; statusMsg = "";
+  }catch(err){
+    statusMsg = err && err.code==="rate_limited" ? "Too many requests right now. Wait a moment, then try again."
+      : err && err.code==="not_granted" ? "AI access was not allowed. Allow it when prompted to generate dishes."
+      : "Generation failed. Try again, or change the plate.";
+  }finally{ busy = false; renderPlate(); }
+}
+
+/* ---------- Boot ---------- */
+$("tab-ing").addEventListener("click", ()=>setTab("ing"));
+$("tab-plate").addEventListener("click", ()=>{ renderPlate(); setTab("plate"); });
+$("q").addEventListener("input", e => { state.q = e.target.value; renderSearch(); });
+$("q").addEventListener("keydown", e => { if (e.key==="Escape") closeSearch(); });
+document.addEventListener("click", e => { if (!e.target.closest(".search")) { $("qres").hidden = true; } });
+$("q").addEventListener("focus", () => renderSearch());
+new ResizeObserver(()=>layout()).observe($("stage"));
+fetch("data/ingredients.json").then(r => { if (!r.ok) throw new Error(r.status); return r.json(); }).then(d => {
+  loadData(d);
+  buildEntry(); renderIng(); renderPlate(); layout();
+  $("ingCount").textContent = IDS.length;
+}).catch(err => {
+  $("caption").textContent = "The ingredient data could not be loaded. Reload the page to try again.";
+});
+
+/* ---------- Routing between the two sections ---------- */
+function route(){
+  const market = location.hash === "#market";
+  document.body.classList.toggle("view-market", market);
+  $("v-lab").setAttribute("aria-current", market ? "false" : "page");
+  $("v-market").setAttribute("aria-current", market ? "page" : "false");
+  $("brandSub").textContent = market ? "Mercado · 3D prototype" : "Kitchen · v2 · 500 ingredients";
+  if (market) { if (window.Market) Market.show(); }
+  else { if (window.Market) Market.hide(); requestAnimationFrame(layout); }
+}
+window.addEventListener("hashchange", route);
+route();
+</script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script>
+/* ================= Mercado 3D ================= */
+window.Market = (function(){
+const STALLS = [
+ {title:"Frutas", vendor:"Rosa", hue:0xE0457B, stripe:[0xE0457B,0xFFF3E3], shirt:0x2FA4A0,
+  desc:"Rosa has run this fruit stand for twenty years and always keeps a knife ready for samples.",
+  greet:"Buenos días! Everything here is ripe today. Pick something up and I'll tell you what I'd do with it.",
+  items:[
+   {name:"Mango (Ataulfo)", shape:"ellipsoid", color:0xF4B12E, tip:"Ataulfo mangoes are buttery and sweet. Slice one and dust it with chile powder, lime and a pinch of salt."},
+   {name:"Papaya", shape:"long", color:0xF08A3C, tip:"Squeeze lime over papaya; the acid wakes it right up. A little chile is good too."},
+   {name:"Pineapple", lab:"pineapple", shape:"pineapple", color:0xE2A93B, tip:"Grill pineapple until it caramelizes, then add chile and lime. That's the al pastor trick."},
+   {name:"Lime", lab:"lime", shape:"small", color:0x6FA83C, tip:"Lime goes on almost everything here: fruit, soup, tacos, even beer."},
+   {name:"Coconut", lab:"coconut", shape:"sphere", color:0x7A5034, tip:"Drink the water first, then eat the flesh with lime and chile powder."}]},
+ {title:"Chiles y verduras", vendor:"Ernesto", hue:0x2E8B57, stripe:[0x2E8B57,0xFFF3E3], shirt:0xF2B134,
+  desc:"Ernesto grows half of what he sells and will tell you exactly how hot each chile is.",
+  greet:"Buenas! Making salsa today? Pick up anything and I'll tell you how to use it.",
+  items:[
+   {name:"Tomato (jitomate)", lab:"tomato", shape:"sphere", color:0xE0402F, tip:"Char tomatoes on a dry comal until blistered, then blend for salsa roja."},
+   {name:"Tomatillo", shape:"tomatillo", color:0x9CC25A, tip:"Tomatillos give salsa verde its tartness. Boil or roast them with chile, garlic and cilantro."},
+   {name:"Avocado", shape:"avocado", color:0x2F4A22, tip:"Press gently near the stem; a slight give means it's ready. Guacamole wants lime, onion, cilantro and chile."},
+   {name:"Jalapeño", lab:"chili", shape:"chile", color:0x3E8E41, tip:"Roast them for sweetness, pickle them with carrots and onion, or stuff them with cheese."},
+   {name:"Corn (elote)", shape:"corn", color:0xF2CF4A, tip:"Grill the corn, then spread crema, add cotija, chile and a squeeze of lime."}]},
+ {title:"Hierbas y especias", vendor:"Marisol", hue:0x7B4BB7, stripe:[0x7B4BB7,0xFFF3E3], shirt:0xE0457B,
+  desc:"Marisol's stall smells of dried chiles and canela. She sells by the handful.",
+  greet:"Hola! Smell anything you like. Herbs and spices are where a dish gets its personality.",
+  items:[
+   {name:"Cilantro", lab:"cilantro", shape:"bunch", color:0x4E9A47, tip:"Add it at the very end; heat dulls it. Stems have lots of flavor too."},
+   {name:"Epazote", shape:"bunch", color:0x3A6B32, tip:"Strong and resinous. A few leaves go in black beans and quesadillas."},
+   {name:"Mexican oregano", shape:"mound", color:0x7F8A4A, tip:"More citrusy than Mediterranean oregano. Rub it between your palms over pozole."},
+   {name:"Canela (cinnamon)", lab:"cinnamon", shape:"sticks", color:0xB06A36, tip:"Soft, flaky Ceylon cinnamon. Use it in café de olla and arroz con leche."},
+   {name:"Vanilla", lab:"vanilla", shape:"pods", color:0x3B2A20, tip:"Vanilla comes from Mexico originally, from the Papantla region of Veracruz. Split the pod and scrape out the seeds."}]},
+ {title:"Cacao y café", vendor:"Tomás", hue:0x8A4B2A, stripe:[0x8A4B2A,0xFFF3E3], shirt:0x3D6FB6,
+  desc:"Tomás brings beans from Chiapas and Oaxaca and grinds chocolate the old way.",
+  greet:"Buenas tardes! Want to smell the cacao? Pick something up and we'll talk.",
+  items:[
+   {name:"Cacao pods", shape:"cacao", color:0xD2602F, tip:"The pulp around the beans is sweet and fruity. The beans are fermented, roasted and ground."},
+   {name:"Chocolate de mesa", lab:"dark chocolate", shape:"disc", color:0x4A2C1F, tip:"Stone-ground with sugar and cinnamon. Whisk it into hot milk with a molinillo."},
+   {name:"Coffee", lab:"coffee", shape:"beans", color:0x5A3825, tip:"Brew it in a clay pot with canela and piloncillo for café de olla."},
+   {name:"Piloncillo", shape:"cone", color:0x9A5A22, tip:"Unrefined cane sugar with a deep molasses flavor. Grate it or melt it into syrup."},
+   {name:"Honey (miel)", lab:"honey", shape:"jar", color:0xE8A317, tip:"Drizzle it over queso fresco with a little chile for a quick snack."}]},
+ {title:"Quesos", vendor:"Lucía", hue:0x2B7BB9, stripe:[0x2B7BB9,0xFFF3E3], shirt:0xF08A3C,
+  desc:"Lucía's family makes cheese in Oaxaca. She'll cut you a taste of anything.",
+  greet:"Hola, bienvenida! Try a piece of anything. Every cheese here has its own job in the kitchen.",
+  items:[
+   {name:"Queso fresco", shape:"wheel", color:0xF7F4EC, tip:"Mild, salty and crumbly. Crumble it over beans, enchiladas or fruit."},
+   {name:"Queso Oaxaca", shape:"knot", color:0xF4EEDC, tip:"Stringy and melty, stretched like mozzarella. It's the quesadilla cheese."},
+   {name:"Cotija", shape:"wedge", color:0xEFE5C8, tip:"Aged, salty and crumbly. It finishes elote and beans."},
+   {name:"Crema", shape:"jar", color:0xFBF8F0, tip:"Thinner and tangier than sour cream. Drizzle it over tacos and soups."},
+   {name:"Requesón", shape:"mound", color:0xFAF6EC, tip:"Soft and fresh, like ricotta. Mix it with epazote to fill gorditas."}]}
+];
+const QUICK = ["A simple home recipe","What else goes with it?","How do I pick a good one?","I only have 20 minutes"];
+const $m = id => document.getElementById(id);
+
+let started=false, running=false, renderer, scene, cam, raf, clock;
+let current=-1, near=-1, look=new THREE.Vector3(), keys=new Set(), faceYaw=null;
+const P={x:-3, z:0, yaw:0, pitch:-0.06, v:0, yv:0, step:0};
+const stallObjs=[], walkers=[], flags=[], pickables=[];
+const chat = STALLS.map(()=>({msgs:[], log:[], item:null}));
+let busy=false, samplePromise=null;
+
+const mat = (c,o={}) => new THREE.MeshStandardMaterial(Object.assign({color:c, flatShading:true, roughness:.85, metalness:0}, o));
+function mesh(geo, m, x=0,y=0,z=0){ const o=new THREE.Mesh(geo, m); o.position.set(x,y,z); return o; }
+
+function stallX(i){ return 4 + i*5; }
+function stallSide(i){ return i%2===0 ? -1 : 1; }
+
+/* ---- builders ---- */
+function signTexture(text, sub, color){
+  const c=document.createElement("canvas"); c.width=512; c.height=128; const g=c.getContext("2d");
+  g.fillStyle="#FFF6E8"; g.fillRect(0,0,512,128);
+  g.fillStyle="#"+color.toString(16).padStart(6,"0"); g.fillRect(0,0,512,14); g.fillRect(0,114,512,14);
+  g.fillStyle="#2A1A12"; g.font="italic 600 48px Georgia, serif"; g.textAlign="center"; g.fillText(text,256,70);
+  g.font="22px monospace"; g.fillStyle="#7A5A44"; g.fillText(sub,256,102);
+  const t=new THREE.CanvasTexture(c); t.encoding=THREE.sRGBEncoding; return t;
+}
+function makeItem(shape, color){
+  const g=new THREE.Group(), m=mat(color);
+  const ico=(r,d=1)=>new THREE.IcosahedronGeometry(r,d);
+  switch(shape){
+    case "sphere": g.add(mesh(ico(.085),m)); break;
+    case "small": g.add(mesh(ico(.055),m)); break;
+    case "ellipsoid": { const o=mesh(ico(.08),m); o.scale.set(1.3,.85,.9); g.add(o); break; }
+    case "long": { const o=mesh(ico(.08),m); o.scale.set(1.9,.9,.9); g.add(o); break; }
+    case "avocado": { const o=mesh(ico(.075),m); o.scale.set(1,1.35,1); g.add(o); break; }
+    case "pineapple": { const b=mesh(ico(.08),m); b.scale.set(1,1.5,1); g.add(b); const cr=mesh(new THREE.ConeGeometry(.06,.12,5),mat(0x3E8E41),0,.17,0); g.add(cr); break; }
+    case "tomatillo": { g.add(mesh(ico(.06),m)); const h=mesh(new THREE.ConeGeometry(.075,.08,6,1,true),mat(0xC9B27A,{side:THREE.DoubleSide}),0,.03,0); h.rotation.x=Math.PI; g.add(h); break; }
+    case "chile": { const o=mesh(new THREE.ConeGeometry(.035,.2,6),m); o.rotation.z=Math.PI/2; g.add(o); break; }
+    case "corn": { const o=mesh(new THREE.CylinderGeometry(.045,.04,.26,7),m); o.rotation.z=Math.PI/2; g.add(o); const h=mesh(new THREE.ConeGeometry(.05,.12,5),mat(0x8DB65A),.17,0,0); h.rotation.z=-Math.PI/2; g.add(h); break; }
+    case "bunch": { for(let k=0;k<4;k++){ const l=mesh(ico(.05,0),m,(k-1.5)*.04,.04+Math.random()*.03,(k%2)*.03); l.scale.set(1,.7,1); g.add(l);} g.add(mesh(new THREE.CylinderGeometry(.012,.012,.14,4),mat(0x6E9440),0,-.05,0)); break; }
+    case "mound": { const o=mesh(ico(.11),m); o.scale.set(1.2,.45,1); g.add(o); break; }
+    case "sticks": { for(let k=0;k<3;k++){ const o=mesh(new THREE.CylinderGeometry(.02,.02,.26,6),m,0,k*.03,(k-1)*.04); o.rotation.z=Math.PI/2; g.add(o);} break; }
+    case "pods": { for(let k=0;k<4;k++){ const o=mesh(new THREE.CylinderGeometry(.008,.008,.26,4),m,0,0,(k-1.5)*.025); o.rotation.z=Math.PI/2+(k-1.5)*.08; g.add(o);} break; }
+    case "cacao": { const o=mesh(ico(.07),m); o.scale.set(1.8,1,1); g.add(o); break; }
+    case "disc": { g.add(mesh(new THREE.CylinderGeometry(.08,.08,.035,10),m)); break; }
+    case "beans": { for(let k=0;k<9;k++){ const o=mesh(ico(.025,0),m,(Math.random()-.5)*.16,Math.random()*.04,(Math.random()-.5)*.12); o.scale.set(1.3,.8,1); g.add(o);} break; }
+    case "cone": { g.add(mesh(new THREE.ConeGeometry(.06,.14,7),m)); break; }
+    case "jar": { g.add(mesh(new THREE.CylinderGeometry(.06,.06,.13,10),mat(color,{roughness:.35}))); g.add(mesh(new THREE.CylinderGeometry(.062,.062,.03,10),mat(0xB33A3A),0,.08,0)); break; }
+    case "wheel": { g.add(mesh(new THREE.CylinderGeometry(.11,.11,.07,12),m)); break; }
+    case "knot": { const o=mesh(new THREE.TorusGeometry(.07,.03,6,12),m); o.rotation.x=Math.PI/2; g.add(o); break; }
+    case "wedge": { g.add(mesh(new THREE.CylinderGeometry(.13,.13,.08,10,1,false,0,Math.PI/2.5),m)); break; }
+  }
+  return g;
+}
+const BIG = new Set(["wheel","jar","mound","knot","wedge","bunch","pineapple","long","cacao","corn"]);
+function makeCrate(item){
+  const g=new THREE.Group();
+  const wood=mat(0xA9774B);
+  g.add(mesh(new THREE.BoxGeometry(.56,.12,.44),wood,0,.06,0));
+  const pile=new THREE.Group(); pile.position.y=.15; g.add(pile);
+  const spots = BIG.has(item.shape) ? [[-.13,0,-.08],[.13,0,.06],[0,.04,.1],[.05,.07,-.1]] : [[-.17,0,-.12],[0,0,-.12],[.17,0,-.12],[-.17,0,.08],[0,0,.08],[.17,0,.08],[-.08,.08,-.02],[.08,.08,-.02],[0,.15,-.04]];
+  spots.forEach(([x,y,z]) => { const it=makeItem(item.shape,item.color); it.position.set(x,y,z); it.rotation.set(Math.random()*.4,Math.random()*Math.PI,Math.random()*.3); pile.add(it); });
+  g.userData.pile=pile;
+  return g;
+}
+function makePerson(o){
+  const p=new THREE.Group(), skin=mat(o.skin), shirt=mat(o.shirt), pants=mat(o.pants||0x3B3B4A), hairM=mat(o.hair||0x2A1D16);
+  const legs=[]; [-1,1].forEach(s=>{ const piv=new THREE.Group(); piv.position.set(s*.1,.85,0); piv.add(mesh(new THREE.CylinderGeometry(.075,.065,.8,6),pants,0,-.4,0)); p.add(piv); legs.push(piv); });
+  const torso=new THREE.Group(); p.add(torso);
+  torso.add(mesh(new THREE.CylinderGeometry(.21,.25,.72,7),shirt,0,1.2,0));
+  if (o.apron) torso.add(mesh(new THREE.BoxGeometry(.34,.5,.02),mat(o.apron),0,1.08,.24));
+  const head=new THREE.Group(); head.position.y=1.72; torso.add(head);
+  head.add(mesh(new THREE.IcosahedronGeometry(.17,1),skin));
+  const hair=mesh(new THREE.IcosahedronGeometry(.18,1),hairM,0,.06,-.03); hair.scale.set(1,.65,1); head.add(hair);
+  if (o.hat){ head.add(mesh(new THREE.CylinderGeometry(.3,.3,.02,12),mat(o.hat),0,.13,0)); head.add(mesh(new THREE.CylinderGeometry(.13,.16,.14,10),mat(o.hat),0,.2,0)); }
+  const arms=[]; [-1,1].forEach(s=>{ const piv=new THREE.Group(); piv.position.set(s*.28,1.5,0); piv.add(mesh(new THREE.CylinderGeometry(.05,.05,.58,5),shirt,0,-.29,0)); piv.add(mesh(new THREE.IcosahedronGeometry(.055,0),skin,0,-.6,0)); torso.add(piv); arms.push(piv); });
+  if (o.bag){ arms[1].add(mesh(new THREE.BoxGeometry(.2,.24,.12),mat(o.bag),0,-.78,0)); }
+  p.userData={legs,arms,torso,head,ph:Math.random()*6};
+  const s=o.scale||1; p.scale.setScalar(s);
+  return p;
+}
+/* ---- speech bubbles ---- */
+const bubbleTex={}, bubbles=new Set();
+function bubbleTexture(text){
+  if (bubbleTex[text]) return bubbleTex[text];
+  const c=document.createElement("canvas"), g=c.getContext("2d"), font="600 34px 'IBM Plex Sans', system-ui, sans-serif";
+  g.font=font; const w=Math.ceil(g.measureText(text).width)+48, h=92;
+  c.width=w; c.height=h; g.font=font;
+  g.fillStyle="rgba(42,26,18,.18)"; g.beginPath(); g.roundRect(4,6,w-8,62,24); g.fill();
+  g.fillStyle="#FFFDF8"; g.beginPath(); g.roundRect(2,2,w-8,62,24); g.fill();
+  g.beginPath(); g.moveTo(w/2-12,62); g.lineTo(w/2,86); g.lineTo(w/2+10,62); g.closePath(); g.fill();
+  g.fillStyle="#2A1A12"; g.textAlign="center"; g.textBaseline="middle"; g.fillText(text,(w-4)/2,34);
+  const t=new THREE.CanvasTexture(c); t.encoding=THREE.sRGBEncoding;
+  return bubbleTex[text]={t, aspect:w/h};
+}
+function say(person, text, dur=2.2){
+  const u=person.userData;
+  if (u.bubble){ person.remove(u.bubble.sprite); bubbles.delete(u.bubble); }
+  const {t,aspect}=bubbleTexture(text);
+  const sp=new THREE.Sprite(new THREE.SpriteMaterial({map:t, transparent:true, opacity:0, depthWrite:false, depthTest:false}));
+  const h=.3; sp.scale.set(h*aspect, h, 1); sp.position.set(0,2.32,0); sp.renderOrder=10;
+  person.add(sp);
+  u.bubble={sprite:sp, person, life:dur, dur}; bubbles.add(u.bubble);
+}
+function tickBubbles(dt){
+  bubbles.forEach(b=>{
+    b.life-=dt;
+    b.sprite.material.opacity = Math.max(0, Math.min(1, b.life/.35, (b.dur-b.life)/.2));
+    b.sprite.position.y = 2.32 + Math.min(.06, (b.dur-b.life)*.3);
+    if (b.life<=0){ b.person.remove(b.sprite); b.sprite.material.dispose(); bubbles.delete(b); b.person.userData.bubble=null; }
+  });
+}
+const EXCUSE=["Con permiso","¡Perdón!","Disculpe","Permiso…","¡Ay, perdón!"];
+const HELLO=["¡Pásele, pásele!","¡Buenas! ¿Qué le damos?","¡Hola! Pruebe, pruebe","¿Qué va a llevar?"];
+const CALLS=[["¡Mango dulce, mango!","¡Piña fresquecita!"],["¡Chiles frescos!","¡Jitomate de hoy!"],["¡Canela y vainilla!","¡Epazote fresco!"],["¡Chocolate de metate!","¡Café de Chiapas!"],["¡Pruebe el quesillo!","¡Queso fresco, queso!"]];
+let callT=4;
+
+const SKINS=[0xC68B5E,0x8D5A3B,0xE0B08A,0xA9714A,0x6E4429,0xD9A27A];
+const HAIRS=[0x1E1510,0x3A2618,0x5A3A22,0x111111,0x8A8A8A];
+const SHIRTS=[0x2FA4A0,0xE0457B,0xF2B134,0x3D6FB6,0x7B4BB7,0xF08A3C,0xEDE3D1,0x2E8B57];
+const pick = a => a[Math.floor(Math.random()*a.length)];
+
+function buildStall(i){
+  const st=STALLS[i], g=new THREE.Group(), s=stallSide(i);
+  g.position.set(stallX(i),0,s*4.2); g.rotation.y = s<0 ? 0 : Math.PI;
+  // counter
+  g.add(mesh(new THREE.BoxGeometry(3.4,.95,1),mat(0xD9B98F),0,.475,0));
+  g.add(mesh(new THREE.BoxGeometry(3.5,.06,1.1),mat(0x8A5A3A),0,.97,0));
+  g.add(mesh(new THREE.BoxGeometry(3.42,.3,.02),mat(st.hue),0,.6,.51));
+  // posts + striped awning
+  [[-1.68,.48],[1.68,.48],[-1.68,-1.5],[1.68,-1.5]].forEach(([x,z])=>g.add(mesh(new THREE.CylinderGeometry(.04,.04,2.7,6),mat(0x6B4A33),x,1.35,z)));
+  const aw=new THREE.Group(); aw.position.set(0,2.62,-.45); aw.rotation.x=-.28; g.add(aw);
+  for(let k=0;k<8;k++) aw.add(mesh(new THREE.BoxGeometry(.43,.03,2.3),mat(st.stripe[k%2]),-1.5+k*.43,0,0));
+  for(let k=0;k<8;k++){ const v=mesh(new THREE.ConeGeometry(.2,.18,3),mat(st.stripe[k%2]),-1.5+k*.43,-.1,1.15); v.rotation.x=Math.PI; aw.add(v); }
+  // sign
+  const sign=mesh(new THREE.PlaneGeometry(1.8,.45),new THREE.MeshBasicMaterial({map:signTexture(st.title, st.vendor.toUpperCase(), st.hue)}),0,2.25,.62);
+  g.add(sign);
+  // back shelf with extra stock
+  g.add(mesh(new THREE.BoxGeometry(3.2,1.5,.5),mat(0xC9A57A),0,.75,-1.5));
+  g.add(mesh(new THREE.BoxGeometry(3.2,.05,.55),mat(0x8A5A3A),0,1.52,-1.45));
+  // crates
+  const crates=[];
+  st.items.forEach((it,j)=>{
+    const c=makeCrate(it); c.position.set(-1.32+j*.66,1.0,.08); c.rotation.x=.22; g.add(c);
+    c.traverse(o=>{ o.userData.stall=i; o.userData.item=j; if(o.isMesh) pickables.push(o); });
+    crates.push(c);
+    const extra=makeCrate(it); extra.position.set(-1.32+j*.66,1.55,-1.45); extra.scale.setScalar(.8); g.add(extra);
+  });
+  // vendor
+  const v=makePerson({skin:pick(SKINS), hair:pick(HAIRS), shirt:st.shirt, apron:0xFFFFFF, pants:0x3B3B4A});
+  v.position.set(.3,0,-.75); g.add(v);
+  g.traverse(o=>{ if(o.isMesh && o.userData.stall===undefined){ o.userData.stallBody=i; pickables.push(o); } });
+  scene.add(g);
+  stallObjs.push({g, crates, vendor:v, wave:0});
+}
+
+function buildHall(){
+  const len=36, cx=12;
+  // tiled floor
+  const c=document.createElement("canvas"); c.width=c.height=128; const x=c.getContext("2d");
+  x.fillStyle="#D9A877"; x.fillRect(0,0,128,128); x.fillStyle="#CB9566"; x.fillRect(0,0,64,64); x.fillRect(64,64,64,64);
+  x.strokeStyle="#E8C9A6"; x.lineWidth=3; x.strokeRect(0,0,128,128); x.beginPath(); x.moveTo(64,0); x.lineTo(64,128); x.moveTo(0,64); x.lineTo(128,64); x.stroke();
+  const ft=new THREE.CanvasTexture(c); ft.wrapS=ft.wrapT=THREE.RepeatWrapping; ft.repeat.set(len/1.6,14/1.6); ft.encoding=THREE.sRGBEncoding;
+  const floor=mesh(new THREE.PlaneGeometry(len,14),new THREE.MeshStandardMaterial({map:ft,roughness:.95}),cx,0,0); floor.rotation.x=-Math.PI/2; scene.add(floor);
+  // walls: turquoise wainscot, warm plaster
+  [-1,1].forEach(s=>{
+    const w=mesh(new THREE.PlaneGeometry(len,5.5),mat(0xF4E3C8),cx,2.75,s*7); w.rotation.y = s<0?0:Math.PI; scene.add(w);
+    const b=mesh(new THREE.PlaneGeometry(len,1.2),mat(0x2FA4A0),cx,.6,s*6.98); b.rotation.y = s<0?0:Math.PI; scene.add(b);
+  });
+  const end=mesh(new THREE.PlaneGeometry(14,5.5),mat(0xD6336C),cx+len/2,2.75,0); end.rotation.y=-Math.PI/2; scene.add(end);
+  const sg=mesh(new THREE.PlaneGeometry(6,1.5),new THREE.MeshBasicMaterial({map:signTexture("Mercado","FRUTAS · CHILES · ESPECIAS · CACAO · QUESOS",0xF2B134)}),cx+len/2-.02,3.4,0); sg.rotation.y=-Math.PI/2; scene.add(sg);
+  // columns and beams
+  for(let k=0;k<8;k++){ const bx=-1+k*5;
+    [-1,1].forEach(s=>scene.add(mesh(new THREE.BoxGeometry(.3,4.6,.3),mat(0xEFE2CC),bx,2.3,s*6.6)));
+    scene.add(mesh(new THREE.BoxGeometry(.25,.3,14),mat(0x8A5A3A),bx,4.6,0));
+  }
+  // papel picado
+  const cols=[0xE0457B,0x2FA4A0,0xF2B134,0x7B4BB7,0xF08A3C,0x2E8B57];
+  const fg=new THREE.PlaneGeometry(.34,.42); fg.translate(0,-.21,0);
+  const fmats=cols.map(c=>new THREE.MeshStandardMaterial({color:c, side:THREE.DoubleSide, roughness:.9, transparent:true, opacity:.92}));
+  for(let r=0;r<12;r++){ const fx=-.5+r*2.6;
+    for(let k=0;k<30;k++){ const z=-6.5+k*.45, sag=Math.sin((k/29)*Math.PI)*.35;
+      const f=new THREE.Mesh(fg,fmats[(k+r)%cols.length]); f.position.set(fx,3.9-sag,z); f.rotation.y=Math.PI/2; scene.add(f); flags.push({f,ph:Math.random()*6+r});
+    }
+  }
+  // hanging bulbs
+  for(let k=0;k<8;k++){ const bx=1.5+k*4.4;
+    scene.add(mesh(new THREE.CylinderGeometry(.005,.005,1,3),mat(0x222222),bx,4.1,0));
+    scene.add(mesh(new THREE.IcosahedronGeometry(.09,1),new THREE.MeshBasicMaterial({color:0xFFE2A8}),bx,3.55,0));
+  }
+}
+
+function buildWalkers(){
+  // shoppers keep to the right-hand side of the aisle, so the middle stays open for you
+  for (let k=0;k<7;k++){
+    const dir=Math.random()<.5?1:-1, L=1.15+Math.random()*.6, z=dir*L;
+    const p=makePerson({skin:pick(SKINS), hair:pick(HAIRS), shirt:pick(SHIRTS), pants:pick([0x3B3B4A,0x2D4A6E,0x6B4A33,0x222222]), bag:Math.random()<.5?pick([0xE0457B,0x2FA4A0,0xF2B134]):null, hat:Math.random()<.2?0xD9C08A:null, scale:.92+Math.random()*.14});
+    p.position.set(-1+Math.random()*28, 0, z); scene.add(p);
+    walkers.push({p, z, L, dir, bcool:0, wasY:false, speed:.7+Math.random()*.5, state:"walk", t:0, browse:null, cool:3+Math.random()*6, phase:Math.random()*6});
+  }
+}
+
+/* ---- animation ---- */
+const ease = t => t<.5 ? 4*t*t*t : 1-Math.pow(-2*t+2,3)/2;
+function bez(a,c,b,t){ return new THREE.Vector3().copy(a).multiplyScalar((1-t)*(1-t)).add(c.clone().multiplyScalar(2*(1-t)*t)).add(b.clone().multiplyScalar(t*t)); }
+
+function animate(){
+  if (!running) return;
+  raf=requestAnimationFrame(animate);
+  const dt=Math.min(.05, clock.getDelta()), t=clock.elapsedTime, now=performance.now();
+  // free walking
+  const fwd = (keys.has("up")?1:0) - (keys.has("down")?1:0);
+  const turn = (keys.has("right")?1:0) - (keys.has("left")?1:0);
+  if (fwd || turn) faceYaw = null;
+  P.v += (fwd*2.1 - P.v)*Math.min(1, dt*6);
+  P.yv += (turn*1.7 - P.yv)*Math.min(1, dt*8);
+  P.yaw += P.yv*dt;
+  if (faceYaw!==null){ let d=faceYaw-P.yaw; d=Math.atan2(Math.sin(d),Math.cos(d)); P.yaw += d*Math.min(1,dt*4); if (Math.abs(d)<.01) faceYaw=null; }
+  P.x += Math.cos(P.yaw)*P.v*dt; P.z += Math.sin(P.yaw)*P.v*dt;
+  walkers.forEach(w=>{ const dx=P.x-w.p.position.x, dz=P.z-w.p.position.z, d=Math.hypot(dx,dz); if (d<.5 && d>0){ P.x += dx/d*(.5-d); P.z += dz/d*(.5-d); } });
+  P.x = Math.max(-4.5, Math.min(27.5, P.x)); P.z = Math.max(-2.65, Math.min(2.65, P.z));
+  P.step += Math.abs(P.v)*dt*5.2;
+  const bobAmt = Math.min(1, Math.abs(P.v)/1.5);
+  cam.position.set(P.x, 1.66 + Math.sin(P.step*2)*.028*bobAmt, P.z);
+  look.set(P.x + Math.cos(P.yaw)*Math.cos(P.pitch)*5, cam.position.y + Math.sin(P.pitch)*5 + Math.sin(P.step)*.02*bobAmt, P.z + Math.sin(P.yaw)*Math.cos(P.pitch)*5);
+  cam.lookAt(look);
+  updateNear(); updateMap();
+
+  // flags flutter
+  flags.forEach(o=>{ o.f.rotation.z = Math.sin(t*2.2+o.ph)*.18; o.f.rotation.x = Math.sin(t*1.7+o.ph*1.3)*.08; });
+
+  // bubbles and vendors calling out to the aisle
+  tickBubbles(dt);
+  callT-=dt;
+  if (callT<=0){ callT=6+Math.random()*7; const i=Math.floor(Math.random()*STALLS.length);
+    if (i!==near && i!==current) say(stallObjs[i].vendor, pick(CALLS[i]), 2.6); }
+  // vendors
+  stallObjs.forEach((s,i)=>{
+    const u=s.vendor.userData, ph=u.ph;
+    u.torso.rotation.z=Math.sin(t*1.1+ph)*.03;
+    u.torso.position.y=Math.sin(t*2.2+ph)*.008;
+    const active = i===current, close = active || i===near;
+    let lookYaw = Math.sin(t*.45+ph)*.7;
+    if (close){ const lp=s.g.worldToLocal(new THREE.Vector3(P.x,1.6,P.z)); lookYaw = Math.max(-1.1,Math.min(1.1, Math.atan2(lp.x - s.vendor.position.x, lp.z - s.vendor.position.z))); }
+    u.head.rotation.y += (lookYaw-u.head.rotation.y)*.06;
+    u.head.rotation.x = Math.sin(t*.8+ph)*.05;
+    if (s.wave>0){ s.wave-=dt; u.arms[1].rotation.z += ((-2.5 + Math.sin(t*9)*.35) - u.arms[1].rotation.z)*.2; u.arms[1].rotation.x=0; }
+    else { u.arms[1].rotation.z += (0-u.arms[1].rotation.z)*.1; u.arms[1].rotation.x = -.5+Math.sin(t*1.8+ph)*.35; }
+    u.arms[0].rotation.x = -.35+Math.sin(t*1.3+ph+1)*.2;
+    // picked crate lifts
+    s.crates.forEach((c,j)=>{ const want = (active && chat[i].item===j) ? .12 : 0; const p=c.userData.pile; p.position.y += ((.15+want)-p.position.y)*.12; });
+  });
+
+  // shoppers
+  walkers.forEach(w=>{
+    const u=w.p.userData; w.phase += dt*w.speed*6;
+    let moving=false;
+    if (w.state==="walk"){
+      // keep right; if you're ahead in their path, slow down and step around you
+      const laneZ = w.dir*w.L; w.z = laneZ;
+      const ahead = (P.x - w.p.position.x)*w.dir, pdz = w.p.position.z - P.z;
+      let tz = laneZ, slow = 1, yielding = false;
+      if (ahead > -.6 && ahead < 3.2 && Math.abs(pdz) < 1.15){
+        const away = Math.sign(pdz) || Math.sign(laneZ) || 1;
+        tz = Math.max(-2.45, Math.min(2.45, P.z + away*1.2));
+        if (Math.abs(tz-P.z) < .95) tz = Math.max(-2.45, Math.min(2.45, P.z - away*1.2));
+        slow = ahead < 1.3 ? .4 : .75; yielding = ahead < 2.2;
+      }
+      const dzz = tz - w.p.position.z, zstep = Math.sign(dzz)*Math.min(Math.abs(dzz), w.speed*1.2*dt);
+      w.p.position.z += zstep;
+      const tooClose = ahead > 0 && Math.hypot(P.x-w.p.position.x, P.z-w.p.position.z) < .8;
+      const vx = tooClose ? 0 : w.dir*w.speed*slow;
+      w.p.position.x += vx*dt; moving = Math.abs(vx)>0 || Math.abs(zstep)>1e-4;
+      if (w.p.position.x>27 && w.dir>0) w.dir=-1; if (w.p.position.x<-2 && w.dir<0) w.dir=1;
+      w.bcool-=dt;
+      if (yielding && !w.wasY && w.bcool<=0 && ahead<2){ say(w.p, pick(EXCUSE), 1.9); w.bcool=7; }
+      w.wasY=yielding;
+      // a polite glance at you while stepping aside
+      u.head.rotation.y += ((yielding ? Math.max(-.7,Math.min(.7, -Math.sign(pdz)*w.dir*.6)) : 0) - u.head.rotation.y)*.08;
+      if (moving){ let want=Math.atan2(vx, zstep/dt || 0); let d=want-w.p.rotation.y; d=Math.atan2(Math.sin(d),Math.cos(d)); w.p.rotation.y += d*.15; }
+      w.cool-=dt;
+      if (w.cool<=0){
+        for (let i=0;i<STALLS.length;i++){
+          const off = (i===current)? (w.dir>0?-1.55:1.55) : (Math.random()<.5?-1:1)*(0.6+Math.random()*.9);
+          const bx=stallX(i)+off;
+          if (Math.abs(w.p.position.x-bx)<.08){ w.state="in"; w.browse={i, x:bx, z:stallSide(i)*2.75, t:3+Math.random()*4}; break; }
+        }
+      }
+    } else if (w.state==="in" || w.state==="out"){
+      const tz = w.state==="in" ? w.browse.z : w.z;
+      const dz = tz - w.p.position.z, step = Math.sign(dz)*w.speed*.8*dt;
+      if (Math.abs(dz) <= Math.abs(step)){ w.p.position.z=tz; if (w.state==="in"){ w.state="browse"; } else { w.state="walk"; w.cool=6+Math.random()*10; } }
+      else { w.p.position.z += step; moving=true; }
+      const yaw = Math.sign(dz)>0 ? 0 : Math.PI; w.p.rotation.y += (yaw-w.p.rotation.y)*.15;
+    } else if (w.state==="browse"){
+      w.browse.t-=dt;
+      const yaw = stallSide(w.browse.i)>0 ? 0 : Math.PI; w.p.rotation.y += (yaw-w.p.rotation.y)*.1;
+      u.head.rotation.x = .25+Math.sin(t*1.2+u.ph)*.08; u.head.rotation.y = Math.sin(t*.7+u.ph)*.4;
+      u.arms[1].rotation.x = -.7+Math.sin(t*2+u.ph)*.25;
+      if (w.browse.t<=0){ w.state="out"; u.head.rotation.set(0,0,0); }
+    }
+    if (moving){
+      const s=Math.sin(w.phase);
+      u.legs[0].rotation.x=s*.55; u.legs[1].rotation.x=-s*.55;
+      u.arms[0].rotation.x=-s*.4; if (w.state!=="browse") u.arms[1].rotation.x=s*.4;
+      u.torso.position.y=Math.abs(Math.cos(w.phase))*.035;
+    } else {
+      u.legs[0].rotation.x*=.85; u.legs[1].rotation.x*=.85; u.torso.position.y*=.9;
+      if (w.state!=="browse") { u.arms[0].rotation.x*=.9; u.arms[1].rotation.x*=.9; }
+    }
+  });
+  renderer.render(scene, cam);
+}
+
+/* ---- UI ---- */
+const NS="http://www.w3.org/2000/svg";
+let mapPlayer=null;
+const mx = x => (x+5)*5, mz = z => (z+7)*5;
+function renderMap(){
+  const m=$m("mkMap"); m.innerHTML="";
+  const add=(tag,attrs)=>{ const e=document.createElementNS(NS,tag); for(const k in attrs) e.setAttribute(k,attrs[k]); m.append(e); return e; };
+  add("rect",{x:mx(-4.8),y:mz(-2.9),width:(32.5)*5,height:5.8*5,fill:"#F1DCC0",rx:2});
+  STALLS.forEach((st,i)=>{ const x=stallX(i), sd=stallSide(i);
+    add("rect",{x:mx(x-1.7),y:mz(sd<0?-5.9:3.7),width:17,height:11,rx:2,fill:"#"+st.hue.toString(16).padStart(6,"0")});
+    const t=add("text",{x:mx(x),y:sd<0?mz(-6.3)+1:mz(6.3)+3,"text-anchor":"middle","font-size":"6","font-family":"monospace",fill:"#5A4436"}); t.textContent=st.vendor; });
+  mapPlayer=add("path",{d:"M5 0 L-3.5 3.5 L-2 0 L-3.5 -3.5 Z",fill:"#2A1A12"});
+}
+function updateMap(){ if (mapPlayer) mapPlayer.setAttribute("transform",`translate(${mx(P.x)} ${mz(P.z)}) rotate(${P.yaw*180/Math.PI})`); }
+function nearestStall(){
+  let best=-1, bd=1e9;
+  STALLS.forEach((_,i)=>{ const fx=stallX(i), fz=stallSide(i)*3.4; const d=Math.hypot(P.x-fx, P.z-fz);
+    if (Math.abs(P.x-fx)<2.1 && d<2.9 && d<bd){ bd=d; best=i; } });
+  return best;
+}
+function updateNear(){
+  const n=nearestStall();
+  if (n!==near){
+    near=n;
+    if (n>=0 && n!==current){ stallObjs[n].wave=1.8; say(stallObjs[n].vendor, pick(HELLO), 2.6); }
+    renderPrompt();
+  }
+  if (current>=0 && n!==current){ endTalk(); }
+}
+function renderPrompt(){
+  const pr=$m("mkPrompt");
+  if (near<0 || near===current){ pr.hidden=true; return; }
+  const st=STALLS[near]; const t=$m("mkPromptText"); t.replaceChildren();
+  const b=document.createElement("b"); b.textContent=st.vendor; t.append(b, " · "+st.title);
+  pr.hidden=false;
+}
+function openTalk(i){
+  current=i; $m("mkIntro").hidden=true;
+  const fx=stallX(i) + (window.innerWidth>760 ? -stallSide(i)*1.1 : 0), fz=stallSide(i)*4.2; // keep the stall left of the chat panel
+  faceYaw = Math.atan2(fz-P.z, fx-P.x); P.pitch=-0.16;
+  stallObjs[i].wave=1.6; openPanel(i); renderPrompt();
+}
+function endTalk(){ current=-1; P.pitch=-0.06; closePanel(); renderPrompt(); }
+function hint(msg){ const h=$m("mkHint"); h.textContent=msg; h.classList.add("show"); clearTimeout(hint.t); hint.t=setTimeout(()=>h.classList.remove("show"),2600); }
+function closePanel(){ $m("mkPanel").hidden=true; }
+function openPanel(i){
+  const st=STALLS[i], c=chat[i];
+  $m("mkPanel").hidden=false;
+  $m("mkAv").style.background="#"+st.hue.toString(16).padStart(6,"0");
+  $m("mkName").textContent=st.vendor; $m("mkStall").textContent=st.title; $m("mkDesc").textContent=st.desc;
+  if (!c.log.length) c.log.push({who:"v", text:st.greet});
+  renderItems(); renderChat();
+}
+function renderItems(){
+  const i=current, box=$m("mkItems"); box.replaceChildren();
+  STALLS[i].items.forEach((it,j)=>{ const b=document.createElement("button"); b.type="button"; b.textContent=it.name; b.setAttribute("aria-pressed",String(chat[i].item===j)); b.addEventListener("click",()=>pickItem(j)); box.append(b); });
+  const it = chat[i].item!=null ? STALLS[i].items[chat[i].item] : null;
+  const lab=$m("mkLab");
+  if (it && it.lab){ lab.hidden=false; lab.textContent=`Open ${it.name} in Pairing Lab →`; lab.onclick=()=>{ location.hash="#lab"; setTimeout(()=>{ try{ inspect(toId(it.lab)); addToPlate(toId(it.lab)); }catch(e){} },80); }; }
+  else lab.hidden=true;
+}
+function renderChat(){
+  const i=current, box=$m("mkChat"); box.replaceChildren();
+  chat[i].log.forEach(m=>{ const d=document.createElement("div"); d.className="bub "+m.who;
+    if (m.who==="v"){ const n=document.createElement("i"); n.textContent=STALLS[i].vendor; d.append(n); }
+    d.append(document.createTextNode(m.text)); box.append(d); m.el=d; });
+  box.scrollTop=box.scrollHeight;
+  const q=$m("mkQuick"); q.replaceChildren();
+  if (chat[i].item!=null && !busy) QUICK.forEach(s=>{ const b=document.createElement("button"); b.type="button"; b.textContent=s; b.addEventListener("click",()=>ask(s)); q.append(b); });
+}
+function pickItem(j){
+  const i=current; if (i<0 || busy) return;
+  chat[i].item=j; const it=STALLS[i].items[j];
+  chat[i].log.push({who:"n", text:`You picked up ${it.name.toLowerCase()}.`});
+  renderItems();
+  vendorTurn(`[The customer picks up the ${it.name} from your stall and looks at you.] Greet their choice and give one quick, specific idea for it.`, it.tip);
+}
+function ask(text){
+  const i=current; if (i<0 || busy || !text.trim()) return;
+  chat[i].log.push({who:"u", text});
+  vendorTurn(text, null);
+}
+function persona(i){
+  const st=STALLS[i];
+  const items=st.items.map(x=>x.name).join(", ");
+  const notes=[];
+  st.items.forEach(x=>{ const L = x.lab && typeof adj!=="undefined" ? adj[toId(x.lab)] : null; if (L) notes.push(`${x.name}: ` + L.slice().sort((a,b)=>b.s-a.s).slice(0,4).map(e=>`${nameOf(e.id)} (${TYPE[e.t].toLowerCase()})`).join(", ")); });
+  return `You are ${st.vendor}, who runs the "${st.title}" stall in a busy Mexican mercado. ${st.desc}
+You are a character voiced by AI on a food-pairing website for home cooks.
+Speak warmly and naturally in English. Spanish words are fine for real food names and greetings. Never write in a fake accent or lean on stereotypes.
+Base advice on real Mexican cooking traditions, and on these pairing notes when relevant: ${notes.join("; ")||"none"}.
+Your stall sells: ${items}. You can talk about any ingredient, but you know your own stock best.
+Keep each reply to 2-4 short sentences, practical for a home cook. End with one concrete idea or a short question. If asked about something unrelated to food, steer back kindly.`;
+}
+function getSample(){
+  if (!samplePromise) samplePromise=Promise.resolve(window.AI);
+  return samplePromise;
+}
+async function vendorTurn(userText, fallback){
+  const i=current, c=chat[i];
+  busy=true;
+  const msg={who:"v", text:"…"}; c.log.push(msg); renderChat();
+  const sample=await getSample();
+  if (!sample){
+    msg.text = fallback || "I'd love to chat about that. Open this page on claude.ai and I can answer anything you ask.";
+    busy=false; renderChat(); return;
+  }
+  const content = c.msgs.length ? userText : persona(i)+"\n\n"+userText;
+  const msgs = c.msgs.concat([{role:"user", content}]);
+  try{
+    const r = await sample(msgs, {cache:false, modelTier:"default", onText:({text})=>{ msg.text=text||"…"; if (msg.el){ msg.el.lastChild.textContent=msg.text; $m("mkChat").scrollTop=1e6; } }});
+    msg.text=r.text; c.msgs = msgs.concat([{role:"assistant", content:r.text}]);
+  }catch(err){
+    msg.text = err && err.code==="rate_limited" ? "One moment, it's busy here! Try again in a few seconds."
+      : err && err.code==="not_granted" ? (fallback || "I can only chat once AI access is allowed for this page.")
+      : (fallback || "Sorry, I missed that. Could you ask again?");
+  }finally{ busy=false; renderChat(); }
+}
+
+/* ---- input ---- */
+const ray=new THREE.Raycaster(), ndc=new THREE.Vector2();
+function hit(e){
+  const r=renderer.domElement.getBoundingClientRect();
+  ndc.set(((e.clientX-r.left)/r.width)*2-1, -((e.clientY-r.top)/r.height)*2+1);
+  ray.setFromCamera(ndc,cam); const h=ray.intersectObjects(pickables,false); return h[0] ? h[0].object.userData : null;
+}
+function bindInput(){
+  const cv=renderer.domElement; let drag=null;
+  cv.addEventListener("pointerdown",e=>{ drag={x:e.clientX,y:e.clientY,lx:e.clientX,ly:e.clientY,moved:false}; cv.setPointerCapture(e.pointerId); });
+  cv.addEventListener("pointermove",e=>{
+    if (drag){
+      const dx=e.clientX-drag.lx, dy=e.clientY-drag.ly; drag.lx=e.clientX; drag.ly=e.clientY;
+      if (Math.hypot(e.clientX-drag.x,e.clientY-drag.y)>5) drag.moved=true;
+      if (drag.moved){ P.yaw += dx*.005; P.pitch=Math.max(-.45,Math.min(.3,P.pitch-dy*.004)); faceYaw=null; }
+      return;
+    }
+    const u=hit(e); cv.style.cursor = u && (u.stall!==undefined || u.stallBody!==undefined) ? "pointer" : "grab";
+  });
+  const up=e=>{
+    if (!drag) return; const moved=drag.moved; drag=null; if (moved) return;
+    const u=hit(e); if (!u) return;
+    const si = u.stall!==undefined ? u.stall : u.stallBody; if (si===undefined) return;
+    if (si!==near && si!==current){ hint(`Walk closer to talk to ${STALLS[si].vendor}.`); return; }
+    if (si!==current) openTalk(si);
+    if (u.item!==undefined) pickItem(u.item);
+  };
+  cv.addEventListener("pointerup",up); cv.addEventListener("pointercancel",()=>{ drag=null; });
+  // on-screen pad: hold to walk
+  $m("mkPad").querySelectorAll("button").forEach(b=>{
+    const k=b.dataset.k;
+    const on=e=>{ e.preventDefault(); keys.add(k); b.classList.add("on"); $m("mkIntro").hidden=true; };
+    const off=()=>{ keys.delete(k); b.classList.remove("on"); };
+    b.addEventListener("pointerdown",on); b.addEventListener("pointerup",off); b.addEventListener("pointerleave",off); b.addEventListener("pointercancel",off);
+    b.addEventListener("contextmenu",e=>e.preventDefault());
+  });
+  const KEYMAP={ArrowUp:"up",KeyW:"up",ArrowDown:"down",KeyS:"down",ArrowLeft:"left",KeyA:"left",ArrowRight:"right",KeyD:"right"};
+  window.addEventListener("keydown",e=>{
+    if (!running || e.target.tagName==="INPUT") return;
+    if (KEYMAP[e.code]){ e.preventDefault(); keys.add(KEYMAP[e.code]); $m("mkIntro").hidden=true; }
+    if ((e.code==="KeyE"||e.code==="Enter") && near>=0 && near!==current){ e.preventDefault(); openTalk(near); }
+    if (e.code==="Escape" && current>=0) endTalk();
+  });
+  window.addEventListener("keyup",e=>{ if (KEYMAP[e.code]) keys.delete(KEYMAP[e.code]); });
+  window.addEventListener("blur",()=>keys.clear());
+  $m("mkStart").addEventListener("click",()=>{ $m("mkIntro").hidden=true; hint("Use the arrow pad or WASD to walk. Drag to look around."); });
+  $m("mkTalk").addEventListener("click",()=>{ if (near>=0) openTalk(near); });
+  $m("mkClose").addEventListener("click",endTalk);
+  $m("mkForm").addEventListener("submit",e=>{ e.preventDefault(); const v=$m("mkInput").value; $m("mkInput").value=""; ask(v); });
+}
+function resize(){
+  if (!renderer) return;
+  const el=$m("market"), w=el.clientWidth, h=el.clientHeight; if (!w||!h) return;
+  renderer.setSize(w,h,false); cam.aspect=w/h; cam.updateProjectionMatrix();
+}
+
+function init(){
+  const cv=$m("mkCanvas");
+  try{ renderer=new THREE.WebGLRenderer({canvas:cv, antialias:true}); }
+  catch(e){ $m("mkIntro").querySelector("p").textContent="This browser can't show 3D graphics (WebGL is unavailable)."; $m("mkStart").hidden=true; return false; }
+  renderer.setPixelRatio(Math.min(2,window.devicePixelRatio||1)); renderer.outputEncoding=THREE.sRGBEncoding;
+  scene=new THREE.Scene(); scene.background=new THREE.Color(0xF1DCC0); scene.fog=new THREE.Fog(0xF1DCC0,14,36);
+  cam=new THREE.PerspectiveCamera(52,1,.1,100);
+  scene.add(new THREE.HemisphereLight(0xFFF4E0,0x8A6A50,.95));
+  const sun=new THREE.DirectionalLight(0xFFE6C4,.75); sun.position.set(6,10,4); scene.add(sun);
+  const pl=new THREE.PointLight(0xFFC98A,.5,16); pl.position.set(10,3.4,0); scene.add(pl);
+  buildHall(); STALLS.forEach((_,i)=>buildStall(i)); buildWalkers();
+  clock=new THREE.Clock(); bindInput(); renderMap();
+  new ResizeObserver(resize).observe($m("market"));
+  return true;
+}
+return {
+  show(){ if (!started){ started=true; if (typeof THREE==="undefined" || !init()) return; } resize(); if (!running){ running=true; clock.getDelta(); animate(); } },
+  hide(){ running=false; keys.clear(); cancelAnimationFrame(raf); },
+  _state:()=>({current, near, P:{...P}}), _go:(x,z,yaw)=>{P.x=x;P.z=z;P.yaw=yaw;}, talk:i=>openTalk(i)
+};
+})();
+route();
+</script>
+</body>
+</html>

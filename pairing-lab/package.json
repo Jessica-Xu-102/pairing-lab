@@ -1,0 +1,6 @@
+{
+  "name": "pairing-lab",
+  "private": true,
+  "type": "module",
+  "engines": { "node": ">=20" }
+}
